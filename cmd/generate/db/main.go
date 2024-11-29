@@ -11,10 +11,15 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+var (
+	XMLFileName = os.Args[1]
+	DBName      = os.Args[2]
+)
+
 func main() {
 	r := wordnet.LexicalResource{}
 
-	f, err := os.Open("./english-wordnet-2024.xml")
+	f, err := os.Open(XMLFileName)
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +38,8 @@ func main() {
 }
 
 func run(ctx context.Context, lexicon wordnet.Lexicon) error {
-	c, err := ent.Open("sqlite3", "file:dict.db?_fk=1")
+	c, err := ent.Open("sqlite3",
+		fmt.Sprintf("file:%s?_fk=1", DBName))
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
@@ -43,7 +49,7 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 		return fmt.Errorf("fail to auto migration: %w", err)
 	}
 
-	if false {
+	{
 		fmt.Println("Creating lemmas...")
 		for _, l := range lexicon.LexicalEntries {
 			_, err := c.Lemma.Create().
@@ -56,7 +62,7 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 			}
 		}
 	}
-	if false {
+	{
 		fmt.Println("Creating synsets...")
 		for _, s := range lexicon.Synsets {
 			definitions := make([]int, len(s.Definitions))
@@ -77,7 +83,7 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 			}
 		}
 	}
-	if false {
+	{
 		fmt.Println("Creating senses...")
 		for _, l := range lexicon.LexicalEntries {
 			for _, s := range l.Senses {
@@ -92,7 +98,7 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 			}
 		}
 	}
-	if false {
+	{
 		fmt.Println("Creating sense relations")
 		for _, l := range lexicon.LexicalEntries {
 			for _, s := range l.Senses {
@@ -113,6 +119,18 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 	}
 	{
 		fmt.Println("Creating synset relations")
+		for _, s := range lexicon.Synsets {
+			var reqs []*ent.SynsetRelationCreate
+			for _, relation := range s.SynsetRelations {
+				reqs = append(reqs, c.SynsetRelation.Create().
+					SetFromID(s.ID).
+					SetToID(relation.Target).
+					SetRelType(relation.RelType))
+			}
+			if _, err := c.SynsetRelation.CreateBulk(reqs...).Save(ctx); err != nil {
+				return fmt.Errorf("failed to create synset relations: %w", err)
+			}
+		}
 	}
 
 	return nil
