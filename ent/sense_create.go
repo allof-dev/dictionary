@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/allof-dev/dictionary/ent/lemma"
 	"github.com/allof-dev/dictionary/ent/sense"
+	"github.com/allof-dev/dictionary/ent/senserelation"
 	"github.com/allof-dev/dictionary/ent/synset"
 )
 
@@ -62,6 +63,36 @@ func (sc *SenseCreate) SetNillableLemmaID(id *string) *SenseCreate {
 // SetLemma sets the "lemma" edge to the Lemma entity.
 func (sc *SenseCreate) SetLemma(l *Lemma) *SenseCreate {
 	return sc.SetLemmaID(l.ID)
+}
+
+// AddRelFromIDs adds the "relFrom" edge to the SenseRelation entity by IDs.
+func (sc *SenseCreate) AddRelFromIDs(ids ...int) *SenseCreate {
+	sc.mutation.AddRelFromIDs(ids...)
+	return sc
+}
+
+// AddRelFrom adds the "relFrom" edges to the SenseRelation entity.
+func (sc *SenseCreate) AddRelFrom(s ...*SenseRelation) *SenseCreate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return sc.AddRelFromIDs(ids...)
+}
+
+// AddRelToIDs adds the "relTo" edge to the SenseRelation entity by IDs.
+func (sc *SenseCreate) AddRelToIDs(ids ...int) *SenseCreate {
+	sc.mutation.AddRelToIDs(ids...)
+	return sc
+}
+
+// AddRelTo adds the "relTo" edges to the SenseRelation entity.
+func (sc *SenseCreate) AddRelTo(s ...*SenseRelation) *SenseCreate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return sc.AddRelToIDs(ids...)
 }
 
 // Mutation returns the SenseMutation object of the builder.
@@ -170,6 +201,38 @@ func (sc *SenseCreate) createSpec() (*Sense, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.sense_lemma = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := sc.mutation.RelFromIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelFromTable,
+			Columns: []string{sense.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := sc.mutation.RelToIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelToTable,
+			Columns: []string{sense.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

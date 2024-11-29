@@ -23,5 +23,10 @@ func (Synset) Fields() []ent.Field {
 func (Synset) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("definitions", Definition.Type),
+
+		edge.From("relFrom", SynsetRelation.Type).
+			Ref("to"),
+		edge.From("relTo", SynsetRelation.Type).
+			Ref("from"),
 	}
 }

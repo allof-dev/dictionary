@@ -43,7 +43,7 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 		return fmt.Errorf("fail to auto migration: %w", err)
 	}
 
-	{
+	if false {
 		fmt.Println("Creating lemmas...")
 		for _, l := range lexicon.LexicalEntries {
 			_, err := c.Lemma.Create().
@@ -56,7 +56,7 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 			}
 		}
 	}
-	{
+	if false {
 		fmt.Println("Creating synsets...")
 		for _, s := range lexicon.Synsets {
 			definitions := make([]int, len(s.Definitions))
@@ -77,7 +77,7 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 			}
 		}
 	}
-	{
+	if false {
 		fmt.Println("Creating senses...")
 		for _, l := range lexicon.LexicalEntries {
 			for _, s := range l.Senses {
@@ -91,6 +91,28 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 				}
 			}
 		}
+	}
+	if false {
+		fmt.Println("Creating sense relations")
+		for _, l := range lexicon.LexicalEntries {
+			for _, s := range l.Senses {
+				var reqs []*ent.SenseRelationCreate
+				for _, rel := range s.SenseRelations {
+					reqs = append(reqs,
+						c.SenseRelation.Create().
+							SetRelType(rel.RelType).
+							SetFromID(s.ID).
+							SetToID(rel.Target),
+					)
+				}
+				if _, err := c.SenseRelation.CreateBulk(reqs...).Save(ctx); err != nil {
+					return fmt.Errorf("failed to create sense relations: %w", err)
+				}
+			}
+		}
+	}
+	{
+		fmt.Println("Creating synset relations")
 	}
 
 	return nil

@@ -109,6 +109,52 @@ func HasLemmaWith(preds ...predicate.Lemma) predicate.Sense {
 	})
 }
 
+// HasRelFrom applies the HasEdge predicate on the "relFrom" edge.
+func HasRelFrom() predicate.Sense {
+	return predicate.Sense(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, RelFromTable, RelFromColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRelFromWith applies the HasEdge predicate on the "relFrom" edge with a given conditions (other predicates).
+func HasRelFromWith(preds ...predicate.SenseRelation) predicate.Sense {
+	return predicate.Sense(func(s *sql.Selector) {
+		step := newRelFromStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasRelTo applies the HasEdge predicate on the "relTo" edge.
+func HasRelTo() predicate.Sense {
+	return predicate.Sense(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, RelToTable, RelToColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRelToWith applies the HasEdge predicate on the "relTo" edge with a given conditions (other predicates).
+func HasRelToWith(preds ...predicate.SenseRelation) predicate.Sense {
+	return predicate.Sense(func(s *sql.Selector) {
+		step := newRelToStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Sense) predicate.Sense {
 	return predicate.Sense(sql.AndPredicates(predicates...))

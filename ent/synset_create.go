@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/allof-dev/dictionary/ent/definition"
 	"github.com/allof-dev/dictionary/ent/synset"
+	"github.com/allof-dev/dictionary/ent/synsetrelation"
 )
 
 // SynsetCreate is the builder for creating a Synset entity.
@@ -45,6 +46,36 @@ func (sc *SynsetCreate) AddDefinitions(d ...*Definition) *SynsetCreate {
 		ids[i] = d[i].ID
 	}
 	return sc.AddDefinitionIDs(ids...)
+}
+
+// AddRelFromIDs adds the "relFrom" edge to the SynsetRelation entity by IDs.
+func (sc *SynsetCreate) AddRelFromIDs(ids ...int) *SynsetCreate {
+	sc.mutation.AddRelFromIDs(ids...)
+	return sc
+}
+
+// AddRelFrom adds the "relFrom" edges to the SynsetRelation entity.
+func (sc *SynsetCreate) AddRelFrom(s ...*SynsetRelation) *SynsetCreate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return sc.AddRelFromIDs(ids...)
+}
+
+// AddRelToIDs adds the "relTo" edge to the SynsetRelation entity by IDs.
+func (sc *SynsetCreate) AddRelToIDs(ids ...int) *SynsetCreate {
+	sc.mutation.AddRelToIDs(ids...)
+	return sc
+}
+
+// AddRelTo adds the "relTo" edges to the SynsetRelation entity.
+func (sc *SynsetCreate) AddRelTo(s ...*SynsetRelation) *SynsetCreate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return sc.AddRelToIDs(ids...)
 }
 
 // Mutation returns the SynsetMutation object of the builder.
@@ -142,6 +173,38 @@ func (sc *SynsetCreate) createSpec() (*Synset, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(definition.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := sc.mutation.RelFromIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelFromTable,
+			Columns: []string{synset.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := sc.mutation.RelToIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelToTable,
+			Columns: []string{synset.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

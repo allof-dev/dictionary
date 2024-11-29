@@ -18,7 +18,9 @@ import (
 	"github.com/allof-dev/dictionary/ent/definition"
 	"github.com/allof-dev/dictionary/ent/lemma"
 	"github.com/allof-dev/dictionary/ent/sense"
+	"github.com/allof-dev/dictionary/ent/senserelation"
 	"github.com/allof-dev/dictionary/ent/synset"
+	"github.com/allof-dev/dictionary/ent/synsetrelation"
 )
 
 // Client is the client that holds all ent builders.
@@ -32,8 +34,12 @@ type Client struct {
 	Lemma *LemmaClient
 	// Sense is the client for interacting with the Sense builders.
 	Sense *SenseClient
+	// SenseRelation is the client for interacting with the SenseRelation builders.
+	SenseRelation *SenseRelationClient
 	// Synset is the client for interacting with the Synset builders.
 	Synset *SynsetClient
+	// SynsetRelation is the client for interacting with the SynsetRelation builders.
+	SynsetRelation *SynsetRelationClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -48,7 +54,9 @@ func (c *Client) init() {
 	c.Definition = NewDefinitionClient(c.config)
 	c.Lemma = NewLemmaClient(c.config)
 	c.Sense = NewSenseClient(c.config)
+	c.SenseRelation = NewSenseRelationClient(c.config)
 	c.Synset = NewSynsetClient(c.config)
+	c.SynsetRelation = NewSynsetRelationClient(c.config)
 }
 
 type (
@@ -139,12 +147,14 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:        ctx,
-		config:     cfg,
-		Definition: NewDefinitionClient(cfg),
-		Lemma:      NewLemmaClient(cfg),
-		Sense:      NewSenseClient(cfg),
-		Synset:     NewSynsetClient(cfg),
+		ctx:            ctx,
+		config:         cfg,
+		Definition:     NewDefinitionClient(cfg),
+		Lemma:          NewLemmaClient(cfg),
+		Sense:          NewSenseClient(cfg),
+		SenseRelation:  NewSenseRelationClient(cfg),
+		Synset:         NewSynsetClient(cfg),
+		SynsetRelation: NewSynsetRelationClient(cfg),
 	}, nil
 }
 
@@ -162,12 +172,14 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:        ctx,
-		config:     cfg,
-		Definition: NewDefinitionClient(cfg),
-		Lemma:      NewLemmaClient(cfg),
-		Sense:      NewSenseClient(cfg),
-		Synset:     NewSynsetClient(cfg),
+		ctx:            ctx,
+		config:         cfg,
+		Definition:     NewDefinitionClient(cfg),
+		Lemma:          NewLemmaClient(cfg),
+		Sense:          NewSenseClient(cfg),
+		SenseRelation:  NewSenseRelationClient(cfg),
+		Synset:         NewSynsetClient(cfg),
+		SynsetRelation: NewSynsetRelationClient(cfg),
 	}, nil
 }
 
@@ -196,19 +208,21 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.Definition.Use(hooks...)
-	c.Lemma.Use(hooks...)
-	c.Sense.Use(hooks...)
-	c.Synset.Use(hooks...)
+	for _, n := range []interface{ Use(...Hook) }{
+		c.Definition, c.Lemma, c.Sense, c.SenseRelation, c.Synset, c.SynsetRelation,
+	} {
+		n.Use(hooks...)
+	}
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	c.Definition.Intercept(interceptors...)
-	c.Lemma.Intercept(interceptors...)
-	c.Sense.Intercept(interceptors...)
-	c.Synset.Intercept(interceptors...)
+	for _, n := range []interface{ Intercept(...Interceptor) }{
+		c.Definition, c.Lemma, c.Sense, c.SenseRelation, c.Synset, c.SynsetRelation,
+	} {
+		n.Intercept(interceptors...)
+	}
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -220,8 +234,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Lemma.mutate(ctx, m)
 	case *SenseMutation:
 		return c.Sense.mutate(ctx, m)
+	case *SenseRelationMutation:
+		return c.SenseRelation.mutate(ctx, m)
 	case *SynsetMutation:
 		return c.Synset.mutate(ctx, m)
+	case *SynsetRelationMutation:
+		return c.SynsetRelation.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -649,6 +667,38 @@ func (c *SenseClient) QueryLemma(s *Sense) *LemmaQuery {
 	return query
 }
 
+// QueryRelFrom queries the relFrom edge of a Sense.
+func (c *SenseClient) QueryRelFrom(s *Sense) *SenseRelationQuery {
+	query := (&SenseRelationClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sense.Table, sense.FieldID, id),
+			sqlgraph.To(senserelation.Table, senserelation.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, sense.RelFromTable, sense.RelFromColumn),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRelTo queries the relTo edge of a Sense.
+func (c *SenseClient) QueryRelTo(s *Sense) *SenseRelationQuery {
+	query := (&SenseRelationClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sense.Table, sense.FieldID, id),
+			sqlgraph.To(senserelation.Table, senserelation.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, sense.RelToTable, sense.RelToColumn),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *SenseClient) Hooks() []Hook {
 	return c.hooks.Sense
@@ -671,6 +721,171 @@ func (c *SenseClient) mutate(ctx context.Context, m *SenseMutation) (Value, erro
 		return (&SenseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Sense mutation op: %q", m.Op())
+	}
+}
+
+// SenseRelationClient is a client for the SenseRelation schema.
+type SenseRelationClient struct {
+	config
+}
+
+// NewSenseRelationClient returns a client for the SenseRelation from the given config.
+func NewSenseRelationClient(c config) *SenseRelationClient {
+	return &SenseRelationClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `senserelation.Hooks(f(g(h())))`.
+func (c *SenseRelationClient) Use(hooks ...Hook) {
+	c.hooks.SenseRelation = append(c.hooks.SenseRelation, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `senserelation.Intercept(f(g(h())))`.
+func (c *SenseRelationClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SenseRelation = append(c.inters.SenseRelation, interceptors...)
+}
+
+// Create returns a builder for creating a SenseRelation entity.
+func (c *SenseRelationClient) Create() *SenseRelationCreate {
+	mutation := newSenseRelationMutation(c.config, OpCreate)
+	return &SenseRelationCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SenseRelation entities.
+func (c *SenseRelationClient) CreateBulk(builders ...*SenseRelationCreate) *SenseRelationCreateBulk {
+	return &SenseRelationCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SenseRelationClient) MapCreateBulk(slice any, setFunc func(*SenseRelationCreate, int)) *SenseRelationCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SenseRelationCreateBulk{err: fmt.Errorf("calling to SenseRelationClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SenseRelationCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SenseRelationCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SenseRelation.
+func (c *SenseRelationClient) Update() *SenseRelationUpdate {
+	mutation := newSenseRelationMutation(c.config, OpUpdate)
+	return &SenseRelationUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SenseRelationClient) UpdateOne(sr *SenseRelation) *SenseRelationUpdateOne {
+	mutation := newSenseRelationMutation(c.config, OpUpdateOne, withSenseRelation(sr))
+	return &SenseRelationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SenseRelationClient) UpdateOneID(id int) *SenseRelationUpdateOne {
+	mutation := newSenseRelationMutation(c.config, OpUpdateOne, withSenseRelationID(id))
+	return &SenseRelationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SenseRelation.
+func (c *SenseRelationClient) Delete() *SenseRelationDelete {
+	mutation := newSenseRelationMutation(c.config, OpDelete)
+	return &SenseRelationDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SenseRelationClient) DeleteOne(sr *SenseRelation) *SenseRelationDeleteOne {
+	return c.DeleteOneID(sr.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SenseRelationClient) DeleteOneID(id int) *SenseRelationDeleteOne {
+	builder := c.Delete().Where(senserelation.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SenseRelationDeleteOne{builder}
+}
+
+// Query returns a query builder for SenseRelation.
+func (c *SenseRelationClient) Query() *SenseRelationQuery {
+	return &SenseRelationQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSenseRelation},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SenseRelation entity by its id.
+func (c *SenseRelationClient) Get(ctx context.Context, id int) (*SenseRelation, error) {
+	return c.Query().Where(senserelation.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SenseRelationClient) GetX(ctx context.Context, id int) *SenseRelation {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryFrom queries the from edge of a SenseRelation.
+func (c *SenseRelationClient) QueryFrom(sr *SenseRelation) *SenseQuery {
+	query := (&SenseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := sr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(senserelation.Table, senserelation.FieldID, id),
+			sqlgraph.To(sense.Table, sense.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, senserelation.FromTable, senserelation.FromColumn),
+		)
+		fromV = sqlgraph.Neighbors(sr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTo queries the to edge of a SenseRelation.
+func (c *SenseRelationClient) QueryTo(sr *SenseRelation) *SenseQuery {
+	query := (&SenseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := sr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(senserelation.Table, senserelation.FieldID, id),
+			sqlgraph.To(sense.Table, sense.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, senserelation.ToTable, senserelation.ToColumn),
+		)
+		fromV = sqlgraph.Neighbors(sr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SenseRelationClient) Hooks() []Hook {
+	return c.hooks.SenseRelation
+}
+
+// Interceptors returns the client interceptors.
+func (c *SenseRelationClient) Interceptors() []Interceptor {
+	return c.inters.SenseRelation
+}
+
+func (c *SenseRelationClient) mutate(ctx context.Context, m *SenseRelationMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SenseRelationCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SenseRelationUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SenseRelationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SenseRelationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SenseRelation mutation op: %q", m.Op())
 	}
 }
 
@@ -798,6 +1013,38 @@ func (c *SynsetClient) QueryDefinitions(s *Synset) *DefinitionQuery {
 	return query
 }
 
+// QueryRelFrom queries the relFrom edge of a Synset.
+func (c *SynsetClient) QueryRelFrom(s *Synset) *SynsetRelationQuery {
+	query := (&SynsetRelationClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(synset.Table, synset.FieldID, id),
+			sqlgraph.To(synsetrelation.Table, synsetrelation.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, synset.RelFromTable, synset.RelFromColumn),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRelTo queries the relTo edge of a Synset.
+func (c *SynsetClient) QueryRelTo(s *Synset) *SynsetRelationQuery {
+	query := (&SynsetRelationClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(synset.Table, synset.FieldID, id),
+			sqlgraph.To(synsetrelation.Table, synsetrelation.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, synset.RelToTable, synset.RelToColumn),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *SynsetClient) Hooks() []Hook {
 	return c.hooks.Synset
@@ -823,12 +1070,178 @@ func (c *SynsetClient) mutate(ctx context.Context, m *SynsetMutation) (Value, er
 	}
 }
 
+// SynsetRelationClient is a client for the SynsetRelation schema.
+type SynsetRelationClient struct {
+	config
+}
+
+// NewSynsetRelationClient returns a client for the SynsetRelation from the given config.
+func NewSynsetRelationClient(c config) *SynsetRelationClient {
+	return &SynsetRelationClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `synsetrelation.Hooks(f(g(h())))`.
+func (c *SynsetRelationClient) Use(hooks ...Hook) {
+	c.hooks.SynsetRelation = append(c.hooks.SynsetRelation, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `synsetrelation.Intercept(f(g(h())))`.
+func (c *SynsetRelationClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SynsetRelation = append(c.inters.SynsetRelation, interceptors...)
+}
+
+// Create returns a builder for creating a SynsetRelation entity.
+func (c *SynsetRelationClient) Create() *SynsetRelationCreate {
+	mutation := newSynsetRelationMutation(c.config, OpCreate)
+	return &SynsetRelationCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SynsetRelation entities.
+func (c *SynsetRelationClient) CreateBulk(builders ...*SynsetRelationCreate) *SynsetRelationCreateBulk {
+	return &SynsetRelationCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SynsetRelationClient) MapCreateBulk(slice any, setFunc func(*SynsetRelationCreate, int)) *SynsetRelationCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SynsetRelationCreateBulk{err: fmt.Errorf("calling to SynsetRelationClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SynsetRelationCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SynsetRelationCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SynsetRelation.
+func (c *SynsetRelationClient) Update() *SynsetRelationUpdate {
+	mutation := newSynsetRelationMutation(c.config, OpUpdate)
+	return &SynsetRelationUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SynsetRelationClient) UpdateOne(sr *SynsetRelation) *SynsetRelationUpdateOne {
+	mutation := newSynsetRelationMutation(c.config, OpUpdateOne, withSynsetRelation(sr))
+	return &SynsetRelationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SynsetRelationClient) UpdateOneID(id int) *SynsetRelationUpdateOne {
+	mutation := newSynsetRelationMutation(c.config, OpUpdateOne, withSynsetRelationID(id))
+	return &SynsetRelationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SynsetRelation.
+func (c *SynsetRelationClient) Delete() *SynsetRelationDelete {
+	mutation := newSynsetRelationMutation(c.config, OpDelete)
+	return &SynsetRelationDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SynsetRelationClient) DeleteOne(sr *SynsetRelation) *SynsetRelationDeleteOne {
+	return c.DeleteOneID(sr.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SynsetRelationClient) DeleteOneID(id int) *SynsetRelationDeleteOne {
+	builder := c.Delete().Where(synsetrelation.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SynsetRelationDeleteOne{builder}
+}
+
+// Query returns a query builder for SynsetRelation.
+func (c *SynsetRelationClient) Query() *SynsetRelationQuery {
+	return &SynsetRelationQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSynsetRelation},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SynsetRelation entity by its id.
+func (c *SynsetRelationClient) Get(ctx context.Context, id int) (*SynsetRelation, error) {
+	return c.Query().Where(synsetrelation.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SynsetRelationClient) GetX(ctx context.Context, id int) *SynsetRelation {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryFrom queries the from edge of a SynsetRelation.
+func (c *SynsetRelationClient) QueryFrom(sr *SynsetRelation) *SynsetQuery {
+	query := (&SynsetClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := sr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(synsetrelation.Table, synsetrelation.FieldID, id),
+			sqlgraph.To(synset.Table, synset.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, synsetrelation.FromTable, synsetrelation.FromColumn),
+		)
+		fromV = sqlgraph.Neighbors(sr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTo queries the to edge of a SynsetRelation.
+func (c *SynsetRelationClient) QueryTo(sr *SynsetRelation) *SynsetQuery {
+	query := (&SynsetClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := sr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(synsetrelation.Table, synsetrelation.FieldID, id),
+			sqlgraph.To(synset.Table, synset.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, synsetrelation.ToTable, synsetrelation.ToColumn),
+		)
+		fromV = sqlgraph.Neighbors(sr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SynsetRelationClient) Hooks() []Hook {
+	return c.hooks.SynsetRelation
+}
+
+// Interceptors returns the client interceptors.
+func (c *SynsetRelationClient) Interceptors() []Interceptor {
+	return c.inters.SynsetRelation
+}
+
+func (c *SynsetRelationClient) mutate(ctx context.Context, m *SynsetRelationMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SynsetRelationCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SynsetRelationUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SynsetRelationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SynsetRelationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SynsetRelation mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Definition, Lemma, Sense, Synset []ent.Hook
+		Definition, Lemma, Sense, SenseRelation, Synset, SynsetRelation []ent.Hook
 	}
 	inters struct {
-		Definition, Lemma, Sense, Synset []ent.Interceptor
+		Definition, Lemma, Sense, SenseRelation, Synset,
+		SynsetRelation []ent.Interceptor
 	}
 )

@@ -16,6 +16,10 @@ const (
 	FieldPartOfSpeech = "part_of_speech"
 	// EdgeDefinitions holds the string denoting the definitions edge name in mutations.
 	EdgeDefinitions = "definitions"
+	// EdgeRelFrom holds the string denoting the relfrom edge name in mutations.
+	EdgeRelFrom = "relFrom"
+	// EdgeRelTo holds the string denoting the relto edge name in mutations.
+	EdgeRelTo = "relTo"
 	// Table holds the table name of the synset in the database.
 	Table = "synsets"
 	// DefinitionsTable is the table that holds the definitions relation/edge.
@@ -25,6 +29,20 @@ const (
 	DefinitionsInverseTable = "definitions"
 	// DefinitionsColumn is the table column denoting the definitions relation/edge.
 	DefinitionsColumn = "synset_definitions"
+	// RelFromTable is the table that holds the relFrom relation/edge.
+	RelFromTable = "synset_relations"
+	// RelFromInverseTable is the table name for the SynsetRelation entity.
+	// It exists in this package in order to avoid circular dependency with the "synsetrelation" package.
+	RelFromInverseTable = "synset_relations"
+	// RelFromColumn is the table column denoting the relFrom relation/edge.
+	RelFromColumn = "synset_relation_to"
+	// RelToTable is the table that holds the relTo relation/edge.
+	RelToTable = "synset_relations"
+	// RelToInverseTable is the table name for the SynsetRelation entity.
+	// It exists in this package in order to avoid circular dependency with the "synsetrelation" package.
+	RelToInverseTable = "synset_relations"
+	// RelToColumn is the table column denoting the relTo relation/edge.
+	RelToColumn = "synset_relation_from"
 )
 
 // Columns holds all SQL columns for synset fields.
@@ -76,10 +94,52 @@ func ByDefinitions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newDefinitionsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByRelFromCount orders the results by relFrom count.
+func ByRelFromCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newRelFromStep(), opts...)
+	}
+}
+
+// ByRelFrom orders the results by relFrom terms.
+func ByRelFrom(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newRelFromStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByRelToCount orders the results by relTo count.
+func ByRelToCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newRelToStep(), opts...)
+	}
+}
+
+// ByRelTo orders the results by relTo terms.
+func ByRelTo(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newRelToStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newDefinitionsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(DefinitionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, DefinitionsTable, DefinitionsColumn),
+	)
+}
+func newRelFromStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(RelFromInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, RelFromTable, RelFromColumn),
+	)
+}
+func newRelToStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(RelToInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, RelToTable, RelToColumn),
 	)
 }

@@ -15,5 +15,11 @@ type Lemma func(*sql.Selector)
 // Sense is the predicate function for sense builders.
 type Sense func(*sql.Selector)
 
+// SenseRelation is the predicate function for senserelation builders.
+type SenseRelation func(*sql.Selector)
+
 // Synset is the predicate function for synset builders.
 type Synset func(*sql.Selector)
+
+// SynsetRelation is the predicate function for synsetrelation builders.
+type SynsetRelation func(*sql.Selector)

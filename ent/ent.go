@@ -15,7 +15,9 @@ import (
 	"github.com/allof-dev/dictionary/ent/definition"
 	"github.com/allof-dev/dictionary/ent/lemma"
 	"github.com/allof-dev/dictionary/ent/sense"
+	"github.com/allof-dev/dictionary/ent/senserelation"
 	"github.com/allof-dev/dictionary/ent/synset"
+	"github.com/allof-dev/dictionary/ent/synsetrelation"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -76,10 +78,12 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			definition.Table: definition.ValidColumn,
-			lemma.Table:      lemma.ValidColumn,
-			sense.Table:      sense.ValidColumn,
-			synset.Table:     synset.ValidColumn,
+			definition.Table:     definition.ValidColumn,
+			lemma.Table:          lemma.ValidColumn,
+			sense.Table:          sense.ValidColumn,
+			senserelation.Table:  senserelation.ValidColumn,
+			synset.Table:         synset.ValidColumn,
+			synsetrelation.Table: synsetrelation.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

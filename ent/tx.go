@@ -18,8 +18,12 @@ type Tx struct {
 	Lemma *LemmaClient
 	// Sense is the client for interacting with the Sense builders.
 	Sense *SenseClient
+	// SenseRelation is the client for interacting with the SenseRelation builders.
+	SenseRelation *SenseRelationClient
 	// Synset is the client for interacting with the Synset builders.
 	Synset *SynsetClient
+	// SynsetRelation is the client for interacting with the SynsetRelation builders.
+	SynsetRelation *SynsetRelationClient
 
 	// lazily loaded.
 	client     *Client
@@ -154,7 +158,9 @@ func (tx *Tx) init() {
 	tx.Definition = NewDefinitionClient(tx.config)
 	tx.Lemma = NewLemmaClient(tx.config)
 	tx.Sense = NewSenseClient(tx.config)
+	tx.SenseRelation = NewSenseRelationClient(tx.config)
 	tx.Synset = NewSynsetClient(tx.config)
+	tx.SynsetRelation = NewSynsetRelationClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

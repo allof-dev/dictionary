@@ -14,7 +14,9 @@ import (
 	"github.com/allof-dev/dictionary/ent/lemma"
 	"github.com/allof-dev/dictionary/ent/predicate"
 	"github.com/allof-dev/dictionary/ent/sense"
+	"github.com/allof-dev/dictionary/ent/senserelation"
 	"github.com/allof-dev/dictionary/ent/synset"
+	"github.com/allof-dev/dictionary/ent/synsetrelation"
 )
 
 const (
@@ -26,10 +28,12 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeDefinition = "Definition"
-	TypeLemma      = "Lemma"
-	TypeSense      = "Sense"
-	TypeSynset     = "Synset"
+	TypeDefinition     = "Definition"
+	TypeLemma          = "Lemma"
+	TypeSense          = "Sense"
+	TypeSenseRelation  = "SenseRelation"
+	TypeSynset         = "Synset"
+	TypeSynsetRelation = "SynsetRelation"
 )
 
 // DefinitionMutation represents an operation that mutates the Definition nodes in the graph.
@@ -840,17 +844,23 @@ func (m *LemmaMutation) ResetEdge(name string) error {
 // SenseMutation represents an operation that mutates the Sense nodes in the graph.
 type SenseMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *string
-	clearedFields map[string]struct{}
-	synset        *string
-	clearedsynset bool
-	lemma         *string
-	clearedlemma  bool
-	done          bool
-	oldValue      func(context.Context) (*Sense, error)
-	predicates    []predicate.Sense
+	op             Op
+	typ            string
+	id             *string
+	clearedFields  map[string]struct{}
+	synset         *string
+	clearedsynset  bool
+	lemma          *string
+	clearedlemma   bool
+	relFrom        map[int]struct{}
+	removedrelFrom map[int]struct{}
+	clearedrelFrom bool
+	relTo          map[int]struct{}
+	removedrelTo   map[int]struct{}
+	clearedrelTo   bool
+	done           bool
+	oldValue       func(context.Context) (*Sense, error)
+	predicates     []predicate.Sense
 }
 
 var _ ent.Mutation = (*SenseMutation)(nil)
@@ -1035,6 +1045,114 @@ func (m *SenseMutation) ResetLemma() {
 	m.clearedlemma = false
 }
 
+// AddRelFromIDs adds the "relFrom" edge to the SenseRelation entity by ids.
+func (m *SenseMutation) AddRelFromIDs(ids ...int) {
+	if m.relFrom == nil {
+		m.relFrom = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.relFrom[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRelFrom clears the "relFrom" edge to the SenseRelation entity.
+func (m *SenseMutation) ClearRelFrom() {
+	m.clearedrelFrom = true
+}
+
+// RelFromCleared reports if the "relFrom" edge to the SenseRelation entity was cleared.
+func (m *SenseMutation) RelFromCleared() bool {
+	return m.clearedrelFrom
+}
+
+// RemoveRelFromIDs removes the "relFrom" edge to the SenseRelation entity by IDs.
+func (m *SenseMutation) RemoveRelFromIDs(ids ...int) {
+	if m.removedrelFrom == nil {
+		m.removedrelFrom = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.relFrom, ids[i])
+		m.removedrelFrom[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRelFrom returns the removed IDs of the "relFrom" edge to the SenseRelation entity.
+func (m *SenseMutation) RemovedRelFromIDs() (ids []int) {
+	for id := range m.removedrelFrom {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RelFromIDs returns the "relFrom" edge IDs in the mutation.
+func (m *SenseMutation) RelFromIDs() (ids []int) {
+	for id := range m.relFrom {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRelFrom resets all changes to the "relFrom" edge.
+func (m *SenseMutation) ResetRelFrom() {
+	m.relFrom = nil
+	m.clearedrelFrom = false
+	m.removedrelFrom = nil
+}
+
+// AddRelToIDs adds the "relTo" edge to the SenseRelation entity by ids.
+func (m *SenseMutation) AddRelToIDs(ids ...int) {
+	if m.relTo == nil {
+		m.relTo = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.relTo[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRelTo clears the "relTo" edge to the SenseRelation entity.
+func (m *SenseMutation) ClearRelTo() {
+	m.clearedrelTo = true
+}
+
+// RelToCleared reports if the "relTo" edge to the SenseRelation entity was cleared.
+func (m *SenseMutation) RelToCleared() bool {
+	return m.clearedrelTo
+}
+
+// RemoveRelToIDs removes the "relTo" edge to the SenseRelation entity by IDs.
+func (m *SenseMutation) RemoveRelToIDs(ids ...int) {
+	if m.removedrelTo == nil {
+		m.removedrelTo = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.relTo, ids[i])
+		m.removedrelTo[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRelTo returns the removed IDs of the "relTo" edge to the SenseRelation entity.
+func (m *SenseMutation) RemovedRelToIDs() (ids []int) {
+	for id := range m.removedrelTo {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RelToIDs returns the "relTo" edge IDs in the mutation.
+func (m *SenseMutation) RelToIDs() (ids []int) {
+	for id := range m.relTo {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRelTo resets all changes to the "relTo" edge.
+func (m *SenseMutation) ResetRelTo() {
+	m.relTo = nil
+	m.clearedrelTo = false
+	m.removedrelTo = nil
+}
+
 // Where appends a list predicates to the SenseMutation builder.
 func (m *SenseMutation) Where(ps ...predicate.Sense) {
 	m.predicates = append(m.predicates, ps...)
@@ -1143,12 +1261,18 @@ func (m *SenseMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *SenseMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.synset != nil {
 		edges = append(edges, sense.EdgeSynset)
 	}
 	if m.lemma != nil {
 		edges = append(edges, sense.EdgeLemma)
+	}
+	if m.relFrom != nil {
+		edges = append(edges, sense.EdgeRelFrom)
+	}
+	if m.relTo != nil {
+		edges = append(edges, sense.EdgeRelTo)
 	}
 	return edges
 }
@@ -1165,30 +1289,68 @@ func (m *SenseMutation) AddedIDs(name string) []ent.Value {
 		if id := m.lemma; id != nil {
 			return []ent.Value{*id}
 		}
+	case sense.EdgeRelFrom:
+		ids := make([]ent.Value, 0, len(m.relFrom))
+		for id := range m.relFrom {
+			ids = append(ids, id)
+		}
+		return ids
+	case sense.EdgeRelTo:
+		ids := make([]ent.Value, 0, len(m.relTo))
+		for id := range m.relTo {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *SenseMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
+	if m.removedrelFrom != nil {
+		edges = append(edges, sense.EdgeRelFrom)
+	}
+	if m.removedrelTo != nil {
+		edges = append(edges, sense.EdgeRelTo)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *SenseMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case sense.EdgeRelFrom:
+		ids := make([]ent.Value, 0, len(m.removedrelFrom))
+		for id := range m.removedrelFrom {
+			ids = append(ids, id)
+		}
+		return ids
+	case sense.EdgeRelTo:
+		ids := make([]ent.Value, 0, len(m.removedrelTo))
+		for id := range m.removedrelTo {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *SenseMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.clearedsynset {
 		edges = append(edges, sense.EdgeSynset)
 	}
 	if m.clearedlemma {
 		edges = append(edges, sense.EdgeLemma)
+	}
+	if m.clearedrelFrom {
+		edges = append(edges, sense.EdgeRelFrom)
+	}
+	if m.clearedrelTo {
+		edges = append(edges, sense.EdgeRelTo)
 	}
 	return edges
 }
@@ -1201,6 +1363,10 @@ func (m *SenseMutation) EdgeCleared(name string) bool {
 		return m.clearedsynset
 	case sense.EdgeLemma:
 		return m.clearedlemma
+	case sense.EdgeRelFrom:
+		return m.clearedrelFrom
+	case sense.EdgeRelTo:
+		return m.clearedrelTo
 	}
 	return false
 }
@@ -1229,8 +1395,466 @@ func (m *SenseMutation) ResetEdge(name string) error {
 	case sense.EdgeLemma:
 		m.ResetLemma()
 		return nil
+	case sense.EdgeRelFrom:
+		m.ResetRelFrom()
+		return nil
+	case sense.EdgeRelTo:
+		m.ResetRelTo()
+		return nil
 	}
 	return fmt.Errorf("unknown Sense edge %s", name)
+}
+
+// SenseRelationMutation represents an operation that mutates the SenseRelation nodes in the graph.
+type SenseRelationMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	relType       *string
+	clearedFields map[string]struct{}
+	from          *string
+	clearedfrom   bool
+	to            *string
+	clearedto     bool
+	done          bool
+	oldValue      func(context.Context) (*SenseRelation, error)
+	predicates    []predicate.SenseRelation
+}
+
+var _ ent.Mutation = (*SenseRelationMutation)(nil)
+
+// senserelationOption allows management of the mutation configuration using functional options.
+type senserelationOption func(*SenseRelationMutation)
+
+// newSenseRelationMutation creates new mutation for the SenseRelation entity.
+func newSenseRelationMutation(c config, op Op, opts ...senserelationOption) *SenseRelationMutation {
+	m := &SenseRelationMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSenseRelation,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSenseRelationID sets the ID field of the mutation.
+func withSenseRelationID(id int) senserelationOption {
+	return func(m *SenseRelationMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *SenseRelation
+		)
+		m.oldValue = func(ctx context.Context) (*SenseRelation, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().SenseRelation.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSenseRelation sets the old SenseRelation of the mutation.
+func withSenseRelation(node *SenseRelation) senserelationOption {
+	return func(m *SenseRelationMutation) {
+		m.oldValue = func(context.Context) (*SenseRelation, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SenseRelationMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SenseRelationMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SenseRelationMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SenseRelationMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().SenseRelation.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetRelType sets the "relType" field.
+func (m *SenseRelationMutation) SetRelType(s string) {
+	m.relType = &s
+}
+
+// RelType returns the value of the "relType" field in the mutation.
+func (m *SenseRelationMutation) RelType() (r string, exists bool) {
+	v := m.relType
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRelType returns the old "relType" field's value of the SenseRelation entity.
+// If the SenseRelation object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SenseRelationMutation) OldRelType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRelType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRelType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRelType: %w", err)
+	}
+	return oldValue.RelType, nil
+}
+
+// ResetRelType resets all changes to the "relType" field.
+func (m *SenseRelationMutation) ResetRelType() {
+	m.relType = nil
+}
+
+// SetFromID sets the "from" edge to the Sense entity by id.
+func (m *SenseRelationMutation) SetFromID(id string) {
+	m.from = &id
+}
+
+// ClearFrom clears the "from" edge to the Sense entity.
+func (m *SenseRelationMutation) ClearFrom() {
+	m.clearedfrom = true
+}
+
+// FromCleared reports if the "from" edge to the Sense entity was cleared.
+func (m *SenseRelationMutation) FromCleared() bool {
+	return m.clearedfrom
+}
+
+// FromID returns the "from" edge ID in the mutation.
+func (m *SenseRelationMutation) FromID() (id string, exists bool) {
+	if m.from != nil {
+		return *m.from, true
+	}
+	return
+}
+
+// FromIDs returns the "from" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// FromID instead. It exists only for internal usage by the builders.
+func (m *SenseRelationMutation) FromIDs() (ids []string) {
+	if id := m.from; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetFrom resets all changes to the "from" edge.
+func (m *SenseRelationMutation) ResetFrom() {
+	m.from = nil
+	m.clearedfrom = false
+}
+
+// SetToID sets the "to" edge to the Sense entity by id.
+func (m *SenseRelationMutation) SetToID(id string) {
+	m.to = &id
+}
+
+// ClearTo clears the "to" edge to the Sense entity.
+func (m *SenseRelationMutation) ClearTo() {
+	m.clearedto = true
+}
+
+// ToCleared reports if the "to" edge to the Sense entity was cleared.
+func (m *SenseRelationMutation) ToCleared() bool {
+	return m.clearedto
+}
+
+// ToID returns the "to" edge ID in the mutation.
+func (m *SenseRelationMutation) ToID() (id string, exists bool) {
+	if m.to != nil {
+		return *m.to, true
+	}
+	return
+}
+
+// ToIDs returns the "to" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ToID instead. It exists only for internal usage by the builders.
+func (m *SenseRelationMutation) ToIDs() (ids []string) {
+	if id := m.to; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTo resets all changes to the "to" edge.
+func (m *SenseRelationMutation) ResetTo() {
+	m.to = nil
+	m.clearedto = false
+}
+
+// Where appends a list predicates to the SenseRelationMutation builder.
+func (m *SenseRelationMutation) Where(ps ...predicate.SenseRelation) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SenseRelationMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SenseRelationMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.SenseRelation, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SenseRelationMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SenseRelationMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (SenseRelation).
+func (m *SenseRelationMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SenseRelationMutation) Fields() []string {
+	fields := make([]string, 0, 1)
+	if m.relType != nil {
+		fields = append(fields, senserelation.FieldRelType)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SenseRelationMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case senserelation.FieldRelType:
+		return m.RelType()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SenseRelationMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case senserelation.FieldRelType:
+		return m.OldRelType(ctx)
+	}
+	return nil, fmt.Errorf("unknown SenseRelation field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SenseRelationMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case senserelation.FieldRelType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRelType(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SenseRelation field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SenseRelationMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SenseRelationMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SenseRelationMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown SenseRelation numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SenseRelationMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SenseRelationMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SenseRelationMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown SenseRelation nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SenseRelationMutation) ResetField(name string) error {
+	switch name {
+	case senserelation.FieldRelType:
+		m.ResetRelType()
+		return nil
+	}
+	return fmt.Errorf("unknown SenseRelation field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SenseRelationMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.from != nil {
+		edges = append(edges, senserelation.EdgeFrom)
+	}
+	if m.to != nil {
+		edges = append(edges, senserelation.EdgeTo)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SenseRelationMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case senserelation.EdgeFrom:
+		if id := m.from; id != nil {
+			return []ent.Value{*id}
+		}
+	case senserelation.EdgeTo:
+		if id := m.to; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SenseRelationMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SenseRelationMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SenseRelationMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedfrom {
+		edges = append(edges, senserelation.EdgeFrom)
+	}
+	if m.clearedto {
+		edges = append(edges, senserelation.EdgeTo)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SenseRelationMutation) EdgeCleared(name string) bool {
+	switch name {
+	case senserelation.EdgeFrom:
+		return m.clearedfrom
+	case senserelation.EdgeTo:
+		return m.clearedto
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SenseRelationMutation) ClearEdge(name string) error {
+	switch name {
+	case senserelation.EdgeFrom:
+		m.ClearFrom()
+		return nil
+	case senserelation.EdgeTo:
+		m.ClearTo()
+		return nil
+	}
+	return fmt.Errorf("unknown SenseRelation unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SenseRelationMutation) ResetEdge(name string) error {
+	switch name {
+	case senserelation.EdgeFrom:
+		m.ResetFrom()
+		return nil
+	case senserelation.EdgeTo:
+		m.ResetTo()
+		return nil
+	}
+	return fmt.Errorf("unknown SenseRelation edge %s", name)
 }
 
 // SynsetMutation represents an operation that mutates the Synset nodes in the graph.
@@ -1244,6 +1868,12 @@ type SynsetMutation struct {
 	definitions        map[int]struct{}
 	removeddefinitions map[int]struct{}
 	cleareddefinitions bool
+	relFrom            map[int]struct{}
+	removedrelFrom     map[int]struct{}
+	clearedrelFrom     bool
+	relTo              map[int]struct{}
+	removedrelTo       map[int]struct{}
+	clearedrelTo       bool
 	done               bool
 	oldValue           func(context.Context) (*Synset, error)
 	predicates         []predicate.Synset
@@ -1443,6 +2073,114 @@ func (m *SynsetMutation) ResetDefinitions() {
 	m.removeddefinitions = nil
 }
 
+// AddRelFromIDs adds the "relFrom" edge to the SynsetRelation entity by ids.
+func (m *SynsetMutation) AddRelFromIDs(ids ...int) {
+	if m.relFrom == nil {
+		m.relFrom = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.relFrom[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRelFrom clears the "relFrom" edge to the SynsetRelation entity.
+func (m *SynsetMutation) ClearRelFrom() {
+	m.clearedrelFrom = true
+}
+
+// RelFromCleared reports if the "relFrom" edge to the SynsetRelation entity was cleared.
+func (m *SynsetMutation) RelFromCleared() bool {
+	return m.clearedrelFrom
+}
+
+// RemoveRelFromIDs removes the "relFrom" edge to the SynsetRelation entity by IDs.
+func (m *SynsetMutation) RemoveRelFromIDs(ids ...int) {
+	if m.removedrelFrom == nil {
+		m.removedrelFrom = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.relFrom, ids[i])
+		m.removedrelFrom[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRelFrom returns the removed IDs of the "relFrom" edge to the SynsetRelation entity.
+func (m *SynsetMutation) RemovedRelFromIDs() (ids []int) {
+	for id := range m.removedrelFrom {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RelFromIDs returns the "relFrom" edge IDs in the mutation.
+func (m *SynsetMutation) RelFromIDs() (ids []int) {
+	for id := range m.relFrom {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRelFrom resets all changes to the "relFrom" edge.
+func (m *SynsetMutation) ResetRelFrom() {
+	m.relFrom = nil
+	m.clearedrelFrom = false
+	m.removedrelFrom = nil
+}
+
+// AddRelToIDs adds the "relTo" edge to the SynsetRelation entity by ids.
+func (m *SynsetMutation) AddRelToIDs(ids ...int) {
+	if m.relTo == nil {
+		m.relTo = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.relTo[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRelTo clears the "relTo" edge to the SynsetRelation entity.
+func (m *SynsetMutation) ClearRelTo() {
+	m.clearedrelTo = true
+}
+
+// RelToCleared reports if the "relTo" edge to the SynsetRelation entity was cleared.
+func (m *SynsetMutation) RelToCleared() bool {
+	return m.clearedrelTo
+}
+
+// RemoveRelToIDs removes the "relTo" edge to the SynsetRelation entity by IDs.
+func (m *SynsetMutation) RemoveRelToIDs(ids ...int) {
+	if m.removedrelTo == nil {
+		m.removedrelTo = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.relTo, ids[i])
+		m.removedrelTo[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRelTo returns the removed IDs of the "relTo" edge to the SynsetRelation entity.
+func (m *SynsetMutation) RemovedRelToIDs() (ids []int) {
+	for id := range m.removedrelTo {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RelToIDs returns the "relTo" edge IDs in the mutation.
+func (m *SynsetMutation) RelToIDs() (ids []int) {
+	for id := range m.relTo {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRelTo resets all changes to the "relTo" edge.
+func (m *SynsetMutation) ResetRelTo() {
+	m.relTo = nil
+	m.clearedrelTo = false
+	m.removedrelTo = nil
+}
+
 // Where appends a list predicates to the SynsetMutation builder.
 func (m *SynsetMutation) Where(ps ...predicate.Synset) {
 	m.predicates = append(m.predicates, ps...)
@@ -1576,9 +2314,15 @@ func (m *SynsetMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *SynsetMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 3)
 	if m.definitions != nil {
 		edges = append(edges, synset.EdgeDefinitions)
+	}
+	if m.relFrom != nil {
+		edges = append(edges, synset.EdgeRelFrom)
+	}
+	if m.relTo != nil {
+		edges = append(edges, synset.EdgeRelTo)
 	}
 	return edges
 }
@@ -1593,15 +2337,33 @@ func (m *SynsetMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case synset.EdgeRelFrom:
+		ids := make([]ent.Value, 0, len(m.relFrom))
+		for id := range m.relFrom {
+			ids = append(ids, id)
+		}
+		return ids
+	case synset.EdgeRelTo:
+		ids := make([]ent.Value, 0, len(m.relTo))
+		for id := range m.relTo {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *SynsetMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 3)
 	if m.removeddefinitions != nil {
 		edges = append(edges, synset.EdgeDefinitions)
+	}
+	if m.removedrelFrom != nil {
+		edges = append(edges, synset.EdgeRelFrom)
+	}
+	if m.removedrelTo != nil {
+		edges = append(edges, synset.EdgeRelTo)
 	}
 	return edges
 }
@@ -1616,15 +2378,33 @@ func (m *SynsetMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case synset.EdgeRelFrom:
+		ids := make([]ent.Value, 0, len(m.removedrelFrom))
+		for id := range m.removedrelFrom {
+			ids = append(ids, id)
+		}
+		return ids
+	case synset.EdgeRelTo:
+		ids := make([]ent.Value, 0, len(m.removedrelTo))
+		for id := range m.removedrelTo {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *SynsetMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 3)
 	if m.cleareddefinitions {
 		edges = append(edges, synset.EdgeDefinitions)
+	}
+	if m.clearedrelFrom {
+		edges = append(edges, synset.EdgeRelFrom)
+	}
+	if m.clearedrelTo {
+		edges = append(edges, synset.EdgeRelTo)
 	}
 	return edges
 }
@@ -1635,6 +2415,10 @@ func (m *SynsetMutation) EdgeCleared(name string) bool {
 	switch name {
 	case synset.EdgeDefinitions:
 		return m.cleareddefinitions
+	case synset.EdgeRelFrom:
+		return m.clearedrelFrom
+	case synset.EdgeRelTo:
+		return m.clearedrelTo
 	}
 	return false
 }
@@ -1654,6 +2438,464 @@ func (m *SynsetMutation) ResetEdge(name string) error {
 	case synset.EdgeDefinitions:
 		m.ResetDefinitions()
 		return nil
+	case synset.EdgeRelFrom:
+		m.ResetRelFrom()
+		return nil
+	case synset.EdgeRelTo:
+		m.ResetRelTo()
+		return nil
 	}
 	return fmt.Errorf("unknown Synset edge %s", name)
+}
+
+// SynsetRelationMutation represents an operation that mutates the SynsetRelation nodes in the graph.
+type SynsetRelationMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	relType       *string
+	clearedFields map[string]struct{}
+	from          *string
+	clearedfrom   bool
+	to            *string
+	clearedto     bool
+	done          bool
+	oldValue      func(context.Context) (*SynsetRelation, error)
+	predicates    []predicate.SynsetRelation
+}
+
+var _ ent.Mutation = (*SynsetRelationMutation)(nil)
+
+// synsetrelationOption allows management of the mutation configuration using functional options.
+type synsetrelationOption func(*SynsetRelationMutation)
+
+// newSynsetRelationMutation creates new mutation for the SynsetRelation entity.
+func newSynsetRelationMutation(c config, op Op, opts ...synsetrelationOption) *SynsetRelationMutation {
+	m := &SynsetRelationMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSynsetRelation,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSynsetRelationID sets the ID field of the mutation.
+func withSynsetRelationID(id int) synsetrelationOption {
+	return func(m *SynsetRelationMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *SynsetRelation
+		)
+		m.oldValue = func(ctx context.Context) (*SynsetRelation, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().SynsetRelation.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSynsetRelation sets the old SynsetRelation of the mutation.
+func withSynsetRelation(node *SynsetRelation) synsetrelationOption {
+	return func(m *SynsetRelationMutation) {
+		m.oldValue = func(context.Context) (*SynsetRelation, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SynsetRelationMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SynsetRelationMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SynsetRelationMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SynsetRelationMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().SynsetRelation.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetRelType sets the "relType" field.
+func (m *SynsetRelationMutation) SetRelType(s string) {
+	m.relType = &s
+}
+
+// RelType returns the value of the "relType" field in the mutation.
+func (m *SynsetRelationMutation) RelType() (r string, exists bool) {
+	v := m.relType
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRelType returns the old "relType" field's value of the SynsetRelation entity.
+// If the SynsetRelation object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SynsetRelationMutation) OldRelType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRelType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRelType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRelType: %w", err)
+	}
+	return oldValue.RelType, nil
+}
+
+// ResetRelType resets all changes to the "relType" field.
+func (m *SynsetRelationMutation) ResetRelType() {
+	m.relType = nil
+}
+
+// SetFromID sets the "from" edge to the Synset entity by id.
+func (m *SynsetRelationMutation) SetFromID(id string) {
+	m.from = &id
+}
+
+// ClearFrom clears the "from" edge to the Synset entity.
+func (m *SynsetRelationMutation) ClearFrom() {
+	m.clearedfrom = true
+}
+
+// FromCleared reports if the "from" edge to the Synset entity was cleared.
+func (m *SynsetRelationMutation) FromCleared() bool {
+	return m.clearedfrom
+}
+
+// FromID returns the "from" edge ID in the mutation.
+func (m *SynsetRelationMutation) FromID() (id string, exists bool) {
+	if m.from != nil {
+		return *m.from, true
+	}
+	return
+}
+
+// FromIDs returns the "from" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// FromID instead. It exists only for internal usage by the builders.
+func (m *SynsetRelationMutation) FromIDs() (ids []string) {
+	if id := m.from; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetFrom resets all changes to the "from" edge.
+func (m *SynsetRelationMutation) ResetFrom() {
+	m.from = nil
+	m.clearedfrom = false
+}
+
+// SetToID sets the "to" edge to the Synset entity by id.
+func (m *SynsetRelationMutation) SetToID(id string) {
+	m.to = &id
+}
+
+// ClearTo clears the "to" edge to the Synset entity.
+func (m *SynsetRelationMutation) ClearTo() {
+	m.clearedto = true
+}
+
+// ToCleared reports if the "to" edge to the Synset entity was cleared.
+func (m *SynsetRelationMutation) ToCleared() bool {
+	return m.clearedto
+}
+
+// ToID returns the "to" edge ID in the mutation.
+func (m *SynsetRelationMutation) ToID() (id string, exists bool) {
+	if m.to != nil {
+		return *m.to, true
+	}
+	return
+}
+
+// ToIDs returns the "to" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ToID instead. It exists only for internal usage by the builders.
+func (m *SynsetRelationMutation) ToIDs() (ids []string) {
+	if id := m.to; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTo resets all changes to the "to" edge.
+func (m *SynsetRelationMutation) ResetTo() {
+	m.to = nil
+	m.clearedto = false
+}
+
+// Where appends a list predicates to the SynsetRelationMutation builder.
+func (m *SynsetRelationMutation) Where(ps ...predicate.SynsetRelation) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SynsetRelationMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SynsetRelationMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.SynsetRelation, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SynsetRelationMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SynsetRelationMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (SynsetRelation).
+func (m *SynsetRelationMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SynsetRelationMutation) Fields() []string {
+	fields := make([]string, 0, 1)
+	if m.relType != nil {
+		fields = append(fields, synsetrelation.FieldRelType)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SynsetRelationMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case synsetrelation.FieldRelType:
+		return m.RelType()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SynsetRelationMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case synsetrelation.FieldRelType:
+		return m.OldRelType(ctx)
+	}
+	return nil, fmt.Errorf("unknown SynsetRelation field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SynsetRelationMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case synsetrelation.FieldRelType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRelType(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SynsetRelation field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SynsetRelationMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SynsetRelationMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SynsetRelationMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown SynsetRelation numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SynsetRelationMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SynsetRelationMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SynsetRelationMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown SynsetRelation nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SynsetRelationMutation) ResetField(name string) error {
+	switch name {
+	case synsetrelation.FieldRelType:
+		m.ResetRelType()
+		return nil
+	}
+	return fmt.Errorf("unknown SynsetRelation field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SynsetRelationMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.from != nil {
+		edges = append(edges, synsetrelation.EdgeFrom)
+	}
+	if m.to != nil {
+		edges = append(edges, synsetrelation.EdgeTo)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SynsetRelationMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case synsetrelation.EdgeFrom:
+		if id := m.from; id != nil {
+			return []ent.Value{*id}
+		}
+	case synsetrelation.EdgeTo:
+		if id := m.to; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SynsetRelationMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SynsetRelationMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SynsetRelationMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedfrom {
+		edges = append(edges, synsetrelation.EdgeFrom)
+	}
+	if m.clearedto {
+		edges = append(edges, synsetrelation.EdgeTo)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SynsetRelationMutation) EdgeCleared(name string) bool {
+	switch name {
+	case synsetrelation.EdgeFrom:
+		return m.clearedfrom
+	case synsetrelation.EdgeTo:
+		return m.clearedto
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SynsetRelationMutation) ClearEdge(name string) error {
+	switch name {
+	case synsetrelation.EdgeFrom:
+		m.ClearFrom()
+		return nil
+	case synsetrelation.EdgeTo:
+		m.ClearTo()
+		return nil
+	}
+	return fmt.Errorf("unknown SynsetRelation unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SynsetRelationMutation) ResetEdge(name string) error {
+	switch name {
+	case synsetrelation.EdgeFrom:
+		m.ResetFrom()
+		return nil
+	case synsetrelation.EdgeTo:
+		m.ResetTo()
+		return nil
+	}
+	return fmt.Errorf("unknown SynsetRelation edge %s", name)
 }

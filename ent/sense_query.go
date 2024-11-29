@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -14,19 +15,22 @@ import (
 	"github.com/allof-dev/dictionary/ent/lemma"
 	"github.com/allof-dev/dictionary/ent/predicate"
 	"github.com/allof-dev/dictionary/ent/sense"
+	"github.com/allof-dev/dictionary/ent/senserelation"
 	"github.com/allof-dev/dictionary/ent/synset"
 )
 
 // SenseQuery is the builder for querying Sense entities.
 type SenseQuery struct {
 	config
-	ctx        *QueryContext
-	order      []sense.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Sense
-	withSynset *SynsetQuery
-	withLemma  *LemmaQuery
-	withFKs    bool
+	ctx         *QueryContext
+	order       []sense.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.Sense
+	withSynset  *SynsetQuery
+	withLemma   *LemmaQuery
+	withRelFrom *SenseRelationQuery
+	withRelTo   *SenseRelationQuery
+	withFKs     bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -100,6 +104,50 @@ func (sq *SenseQuery) QueryLemma() *LemmaQuery {
 			sqlgraph.From(sense.Table, sense.FieldID, selector),
 			sqlgraph.To(lemma.Table, lemma.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, sense.LemmaTable, sense.LemmaColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryRelFrom chains the current query on the "relFrom" edge.
+func (sq *SenseQuery) QueryRelFrom() *SenseRelationQuery {
+	query := (&SenseRelationClient{config: sq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := sq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := sq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sense.Table, sense.FieldID, selector),
+			sqlgraph.To(senserelation.Table, senserelation.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, sense.RelFromTable, sense.RelFromColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryRelTo chains the current query on the "relTo" edge.
+func (sq *SenseQuery) QueryRelTo() *SenseRelationQuery {
+	query := (&SenseRelationClient{config: sq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := sq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := sq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sense.Table, sense.FieldID, selector),
+			sqlgraph.To(senserelation.Table, senserelation.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, sense.RelToTable, sense.RelToColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
 		return fromU, nil
@@ -294,13 +342,15 @@ func (sq *SenseQuery) Clone() *SenseQuery {
 		return nil
 	}
 	return &SenseQuery{
-		config:     sq.config,
-		ctx:        sq.ctx.Clone(),
-		order:      append([]sense.OrderOption{}, sq.order...),
-		inters:     append([]Interceptor{}, sq.inters...),
-		predicates: append([]predicate.Sense{}, sq.predicates...),
-		withSynset: sq.withSynset.Clone(),
-		withLemma:  sq.withLemma.Clone(),
+		config:      sq.config,
+		ctx:         sq.ctx.Clone(),
+		order:       append([]sense.OrderOption{}, sq.order...),
+		inters:      append([]Interceptor{}, sq.inters...),
+		predicates:  append([]predicate.Sense{}, sq.predicates...),
+		withSynset:  sq.withSynset.Clone(),
+		withLemma:   sq.withLemma.Clone(),
+		withRelFrom: sq.withRelFrom.Clone(),
+		withRelTo:   sq.withRelTo.Clone(),
 		// clone intermediate query.
 		sql:  sq.sql.Clone(),
 		path: sq.path,
@@ -326,6 +376,28 @@ func (sq *SenseQuery) WithLemma(opts ...func(*LemmaQuery)) *SenseQuery {
 		opt(query)
 	}
 	sq.withLemma = query
+	return sq
+}
+
+// WithRelFrom tells the query-builder to eager-load the nodes that are connected to
+// the "relFrom" edge. The optional arguments are used to configure the query builder of the edge.
+func (sq *SenseQuery) WithRelFrom(opts ...func(*SenseRelationQuery)) *SenseQuery {
+	query := (&SenseRelationClient{config: sq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	sq.withRelFrom = query
+	return sq
+}
+
+// WithRelTo tells the query-builder to eager-load the nodes that are connected to
+// the "relTo" edge. The optional arguments are used to configure the query builder of the edge.
+func (sq *SenseQuery) WithRelTo(opts ...func(*SenseRelationQuery)) *SenseQuery {
+	query := (&SenseRelationClient{config: sq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	sq.withRelTo = query
 	return sq
 }
 
@@ -386,9 +458,11 @@ func (sq *SenseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Sense,
 		nodes       = []*Sense{}
 		withFKs     = sq.withFKs
 		_spec       = sq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [4]bool{
 			sq.withSynset != nil,
 			sq.withLemma != nil,
+			sq.withRelFrom != nil,
+			sq.withRelTo != nil,
 		}
 	)
 	if sq.withSynset != nil || sq.withLemma != nil {
@@ -424,6 +498,20 @@ func (sq *SenseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Sense,
 	if query := sq.withLemma; query != nil {
 		if err := sq.loadLemma(ctx, query, nodes, nil,
 			func(n *Sense, e *Lemma) { n.Edges.Lemma = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := sq.withRelFrom; query != nil {
+		if err := sq.loadRelFrom(ctx, query, nodes,
+			func(n *Sense) { n.Edges.RelFrom = []*SenseRelation{} },
+			func(n *Sense, e *SenseRelation) { n.Edges.RelFrom = append(n.Edges.RelFrom, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := sq.withRelTo; query != nil {
+		if err := sq.loadRelTo(ctx, query, nodes,
+			func(n *Sense) { n.Edges.RelTo = []*SenseRelation{} },
+			func(n *Sense, e *SenseRelation) { n.Edges.RelTo = append(n.Edges.RelTo, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -491,6 +579,68 @@ func (sq *SenseQuery) loadLemma(ctx context.Context, query *LemmaQuery, nodes []
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (sq *SenseQuery) loadRelFrom(ctx context.Context, query *SenseRelationQuery, nodes []*Sense, init func(*Sense), assign func(*Sense, *SenseRelation)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*Sense)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.SenseRelation(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(sense.RelFromColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.sense_relation_to
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "sense_relation_to" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "sense_relation_to" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (sq *SenseQuery) loadRelTo(ctx context.Context, query *SenseRelationQuery, nodes []*Sense, init func(*Sense), assign func(*Sense, *SenseRelation)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*Sense)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.SenseRelation(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(sense.RelToColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.sense_relation_from
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "sense_relation_from" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "sense_relation_from" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

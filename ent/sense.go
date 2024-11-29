@@ -32,9 +32,13 @@ type SenseEdges struct {
 	Synset *Synset `json:"synset,omitempty"`
 	// Lemma holds the value of the lemma edge.
 	Lemma *Lemma `json:"lemma,omitempty"`
+	// RelFrom holds the value of the relFrom edge.
+	RelFrom []*SenseRelation `json:"relFrom,omitempty"`
+	// RelTo holds the value of the relTo edge.
+	RelTo []*SenseRelation `json:"relTo,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [4]bool
 }
 
 // SynsetOrErr returns the Synset value or an error if the edge
@@ -57,6 +61,24 @@ func (e SenseEdges) LemmaOrErr() (*Lemma, error) {
 		return nil, &NotFoundError{label: lemma.Label}
 	}
 	return nil, &NotLoadedError{edge: "lemma"}
+}
+
+// RelFromOrErr returns the RelFrom value or an error if the edge
+// was not loaded in eager-loading.
+func (e SenseEdges) RelFromOrErr() ([]*SenseRelation, error) {
+	if e.loadedTypes[2] {
+		return e.RelFrom, nil
+	}
+	return nil, &NotLoadedError{edge: "relFrom"}
+}
+
+// RelToOrErr returns the RelTo value or an error if the edge
+// was not loaded in eager-loading.
+func (e SenseEdges) RelToOrErr() ([]*SenseRelation, error) {
+	if e.loadedTypes[3] {
+		return e.RelTo, nil
+	}
+	return nil, &NotLoadedError{edge: "relTo"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -126,6 +148,16 @@ func (s *Sense) QuerySynset() *SynsetQuery {
 // QueryLemma queries the "lemma" edge of the Sense entity.
 func (s *Sense) QueryLemma() *LemmaQuery {
 	return NewSenseClient(s.config).QueryLemma(s)
+}
+
+// QueryRelFrom queries the "relFrom" edge of the Sense entity.
+func (s *Sense) QueryRelFrom() *SenseRelationQuery {
+	return NewSenseClient(s.config).QueryRelFrom(s)
+}
+
+// QueryRelTo queries the "relTo" edge of the Sense entity.
+func (s *Sense) QueryRelTo() *SenseRelationQuery {
+	return NewSenseClient(s.config).QueryRelTo(s)
 }
 
 // Update returns a builder for updating this Sense.

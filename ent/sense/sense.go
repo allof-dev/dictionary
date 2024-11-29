@@ -16,6 +16,10 @@ const (
 	EdgeSynset = "synset"
 	// EdgeLemma holds the string denoting the lemma edge name in mutations.
 	EdgeLemma = "lemma"
+	// EdgeRelFrom holds the string denoting the relfrom edge name in mutations.
+	EdgeRelFrom = "relFrom"
+	// EdgeRelTo holds the string denoting the relto edge name in mutations.
+	EdgeRelTo = "relTo"
 	// Table holds the table name of the sense in the database.
 	Table = "senses"
 	// SynsetTable is the table that holds the synset relation/edge.
@@ -32,6 +36,20 @@ const (
 	LemmaInverseTable = "lemmas"
 	// LemmaColumn is the table column denoting the lemma relation/edge.
 	LemmaColumn = "sense_lemma"
+	// RelFromTable is the table that holds the relFrom relation/edge.
+	RelFromTable = "sense_relations"
+	// RelFromInverseTable is the table name for the SenseRelation entity.
+	// It exists in this package in order to avoid circular dependency with the "senserelation" package.
+	RelFromInverseTable = "sense_relations"
+	// RelFromColumn is the table column denoting the relFrom relation/edge.
+	RelFromColumn = "sense_relation_to"
+	// RelToTable is the table that holds the relTo relation/edge.
+	RelToTable = "sense_relations"
+	// RelToInverseTable is the table name for the SenseRelation entity.
+	// It exists in this package in order to avoid circular dependency with the "senserelation" package.
+	RelToInverseTable = "sense_relations"
+	// RelToColumn is the table column denoting the relTo relation/edge.
+	RelToColumn = "sense_relation_from"
 )
 
 // Columns holds all SQL columns for sense fields.
@@ -87,6 +105,34 @@ func ByLemmaField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newLemmaStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByRelFromCount orders the results by relFrom count.
+func ByRelFromCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newRelFromStep(), opts...)
+	}
+}
+
+// ByRelFrom orders the results by relFrom terms.
+func ByRelFrom(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newRelFromStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByRelToCount orders the results by relTo count.
+func ByRelToCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newRelToStep(), opts...)
+	}
+}
+
+// ByRelTo orders the results by relTo terms.
+func ByRelTo(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newRelToStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newSynsetStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -99,5 +145,19 @@ func newLemmaStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(LemmaInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, false, LemmaTable, LemmaColumn),
+	)
+}
+func newRelFromStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(RelFromInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, RelFromTable, RelFromColumn),
+	)
+}
+func newRelToStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(RelToInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, RelToTable, RelToColumn),
 	)
 }

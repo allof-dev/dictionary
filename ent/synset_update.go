@@ -13,6 +13,7 @@ import (
 	"github.com/allof-dev/dictionary/ent/definition"
 	"github.com/allof-dev/dictionary/ent/predicate"
 	"github.com/allof-dev/dictionary/ent/synset"
+	"github.com/allof-dev/dictionary/ent/synsetrelation"
 )
 
 // SynsetUpdate is the builder for updating Synset entities.
@@ -57,6 +58,36 @@ func (su *SynsetUpdate) AddDefinitions(d ...*Definition) *SynsetUpdate {
 	return su.AddDefinitionIDs(ids...)
 }
 
+// AddRelFromIDs adds the "relFrom" edge to the SynsetRelation entity by IDs.
+func (su *SynsetUpdate) AddRelFromIDs(ids ...int) *SynsetUpdate {
+	su.mutation.AddRelFromIDs(ids...)
+	return su
+}
+
+// AddRelFrom adds the "relFrom" edges to the SynsetRelation entity.
+func (su *SynsetUpdate) AddRelFrom(s ...*SynsetRelation) *SynsetUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return su.AddRelFromIDs(ids...)
+}
+
+// AddRelToIDs adds the "relTo" edge to the SynsetRelation entity by IDs.
+func (su *SynsetUpdate) AddRelToIDs(ids ...int) *SynsetUpdate {
+	su.mutation.AddRelToIDs(ids...)
+	return su
+}
+
+// AddRelTo adds the "relTo" edges to the SynsetRelation entity.
+func (su *SynsetUpdate) AddRelTo(s ...*SynsetRelation) *SynsetUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return su.AddRelToIDs(ids...)
+}
+
 // Mutation returns the SynsetMutation object of the builder.
 func (su *SynsetUpdate) Mutation() *SynsetMutation {
 	return su.mutation
@@ -81,6 +112,48 @@ func (su *SynsetUpdate) RemoveDefinitions(d ...*Definition) *SynsetUpdate {
 		ids[i] = d[i].ID
 	}
 	return su.RemoveDefinitionIDs(ids...)
+}
+
+// ClearRelFrom clears all "relFrom" edges to the SynsetRelation entity.
+func (su *SynsetUpdate) ClearRelFrom() *SynsetUpdate {
+	su.mutation.ClearRelFrom()
+	return su
+}
+
+// RemoveRelFromIDs removes the "relFrom" edge to SynsetRelation entities by IDs.
+func (su *SynsetUpdate) RemoveRelFromIDs(ids ...int) *SynsetUpdate {
+	su.mutation.RemoveRelFromIDs(ids...)
+	return su
+}
+
+// RemoveRelFrom removes "relFrom" edges to SynsetRelation entities.
+func (su *SynsetUpdate) RemoveRelFrom(s ...*SynsetRelation) *SynsetUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return su.RemoveRelFromIDs(ids...)
+}
+
+// ClearRelTo clears all "relTo" edges to the SynsetRelation entity.
+func (su *SynsetUpdate) ClearRelTo() *SynsetUpdate {
+	su.mutation.ClearRelTo()
+	return su
+}
+
+// RemoveRelToIDs removes the "relTo" edge to SynsetRelation entities by IDs.
+func (su *SynsetUpdate) RemoveRelToIDs(ids ...int) *SynsetUpdate {
+	su.mutation.RemoveRelToIDs(ids...)
+	return su
+}
+
+// RemoveRelTo removes "relTo" edges to SynsetRelation entities.
+func (su *SynsetUpdate) RemoveRelTo(s ...*SynsetRelation) *SynsetUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return su.RemoveRelToIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -180,6 +253,96 @@ func (su *SynsetUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if su.mutation.RelFromCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelFromTable,
+			Columns: []string{synset.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.RemovedRelFromIDs(); len(nodes) > 0 && !su.mutation.RelFromCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelFromTable,
+			Columns: []string{synset.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.RelFromIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelFromTable,
+			Columns: []string{synset.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if su.mutation.RelToCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelToTable,
+			Columns: []string{synset.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.RemovedRelToIDs(); len(nodes) > 0 && !su.mutation.RelToCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelToTable,
+			Columns: []string{synset.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.RelToIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelToTable,
+			Columns: []string{synset.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, su.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{synset.Label}
@@ -229,6 +392,36 @@ func (suo *SynsetUpdateOne) AddDefinitions(d ...*Definition) *SynsetUpdateOne {
 	return suo.AddDefinitionIDs(ids...)
 }
 
+// AddRelFromIDs adds the "relFrom" edge to the SynsetRelation entity by IDs.
+func (suo *SynsetUpdateOne) AddRelFromIDs(ids ...int) *SynsetUpdateOne {
+	suo.mutation.AddRelFromIDs(ids...)
+	return suo
+}
+
+// AddRelFrom adds the "relFrom" edges to the SynsetRelation entity.
+func (suo *SynsetUpdateOne) AddRelFrom(s ...*SynsetRelation) *SynsetUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return suo.AddRelFromIDs(ids...)
+}
+
+// AddRelToIDs adds the "relTo" edge to the SynsetRelation entity by IDs.
+func (suo *SynsetUpdateOne) AddRelToIDs(ids ...int) *SynsetUpdateOne {
+	suo.mutation.AddRelToIDs(ids...)
+	return suo
+}
+
+// AddRelTo adds the "relTo" edges to the SynsetRelation entity.
+func (suo *SynsetUpdateOne) AddRelTo(s ...*SynsetRelation) *SynsetUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return suo.AddRelToIDs(ids...)
+}
+
 // Mutation returns the SynsetMutation object of the builder.
 func (suo *SynsetUpdateOne) Mutation() *SynsetMutation {
 	return suo.mutation
@@ -253,6 +446,48 @@ func (suo *SynsetUpdateOne) RemoveDefinitions(d ...*Definition) *SynsetUpdateOne
 		ids[i] = d[i].ID
 	}
 	return suo.RemoveDefinitionIDs(ids...)
+}
+
+// ClearRelFrom clears all "relFrom" edges to the SynsetRelation entity.
+func (suo *SynsetUpdateOne) ClearRelFrom() *SynsetUpdateOne {
+	suo.mutation.ClearRelFrom()
+	return suo
+}
+
+// RemoveRelFromIDs removes the "relFrom" edge to SynsetRelation entities by IDs.
+func (suo *SynsetUpdateOne) RemoveRelFromIDs(ids ...int) *SynsetUpdateOne {
+	suo.mutation.RemoveRelFromIDs(ids...)
+	return suo
+}
+
+// RemoveRelFrom removes "relFrom" edges to SynsetRelation entities.
+func (suo *SynsetUpdateOne) RemoveRelFrom(s ...*SynsetRelation) *SynsetUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return suo.RemoveRelFromIDs(ids...)
+}
+
+// ClearRelTo clears all "relTo" edges to the SynsetRelation entity.
+func (suo *SynsetUpdateOne) ClearRelTo() *SynsetUpdateOne {
+	suo.mutation.ClearRelTo()
+	return suo
+}
+
+// RemoveRelToIDs removes the "relTo" edge to SynsetRelation entities by IDs.
+func (suo *SynsetUpdateOne) RemoveRelToIDs(ids ...int) *SynsetUpdateOne {
+	suo.mutation.RemoveRelToIDs(ids...)
+	return suo
+}
+
+// RemoveRelTo removes "relTo" edges to SynsetRelation entities.
+func (suo *SynsetUpdateOne) RemoveRelTo(s ...*SynsetRelation) *SynsetUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return suo.RemoveRelToIDs(ids...)
 }
 
 // Where appends a list predicates to the SynsetUpdate builder.
@@ -375,6 +610,96 @@ func (suo *SynsetUpdateOne) sqlSave(ctx context.Context) (_node *Synset, err err
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(definition.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if suo.mutation.RelFromCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelFromTable,
+			Columns: []string{synset.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.RemovedRelFromIDs(); len(nodes) > 0 && !suo.mutation.RelFromCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelFromTable,
+			Columns: []string{synset.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.RelFromIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelFromTable,
+			Columns: []string{synset.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if suo.mutation.RelToCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelToTable,
+			Columns: []string{synset.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.RemovedRelToIDs(); len(nodes) > 0 && !suo.mutation.RelToCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelToTable,
+			Columns: []string{synset.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.RelToIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.RelToTable,
+			Columns: []string{synset.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synsetrelation.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

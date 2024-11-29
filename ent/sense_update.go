@@ -13,6 +13,7 @@ import (
 	"github.com/allof-dev/dictionary/ent/lemma"
 	"github.com/allof-dev/dictionary/ent/predicate"
 	"github.com/allof-dev/dictionary/ent/sense"
+	"github.com/allof-dev/dictionary/ent/senserelation"
 	"github.com/allof-dev/dictionary/ent/synset"
 )
 
@@ -67,6 +68,36 @@ func (su *SenseUpdate) SetLemma(l *Lemma) *SenseUpdate {
 	return su.SetLemmaID(l.ID)
 }
 
+// AddRelFromIDs adds the "relFrom" edge to the SenseRelation entity by IDs.
+func (su *SenseUpdate) AddRelFromIDs(ids ...int) *SenseUpdate {
+	su.mutation.AddRelFromIDs(ids...)
+	return su
+}
+
+// AddRelFrom adds the "relFrom" edges to the SenseRelation entity.
+func (su *SenseUpdate) AddRelFrom(s ...*SenseRelation) *SenseUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return su.AddRelFromIDs(ids...)
+}
+
+// AddRelToIDs adds the "relTo" edge to the SenseRelation entity by IDs.
+func (su *SenseUpdate) AddRelToIDs(ids ...int) *SenseUpdate {
+	su.mutation.AddRelToIDs(ids...)
+	return su
+}
+
+// AddRelTo adds the "relTo" edges to the SenseRelation entity.
+func (su *SenseUpdate) AddRelTo(s ...*SenseRelation) *SenseUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return su.AddRelToIDs(ids...)
+}
+
 // Mutation returns the SenseMutation object of the builder.
 func (su *SenseUpdate) Mutation() *SenseMutation {
 	return su.mutation
@@ -82,6 +113,48 @@ func (su *SenseUpdate) ClearSynset() *SenseUpdate {
 func (su *SenseUpdate) ClearLemma() *SenseUpdate {
 	su.mutation.ClearLemma()
 	return su
+}
+
+// ClearRelFrom clears all "relFrom" edges to the SenseRelation entity.
+func (su *SenseUpdate) ClearRelFrom() *SenseUpdate {
+	su.mutation.ClearRelFrom()
+	return su
+}
+
+// RemoveRelFromIDs removes the "relFrom" edge to SenseRelation entities by IDs.
+func (su *SenseUpdate) RemoveRelFromIDs(ids ...int) *SenseUpdate {
+	su.mutation.RemoveRelFromIDs(ids...)
+	return su
+}
+
+// RemoveRelFrom removes "relFrom" edges to SenseRelation entities.
+func (su *SenseUpdate) RemoveRelFrom(s ...*SenseRelation) *SenseUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return su.RemoveRelFromIDs(ids...)
+}
+
+// ClearRelTo clears all "relTo" edges to the SenseRelation entity.
+func (su *SenseUpdate) ClearRelTo() *SenseUpdate {
+	su.mutation.ClearRelTo()
+	return su
+}
+
+// RemoveRelToIDs removes the "relTo" edge to SenseRelation entities by IDs.
+func (su *SenseUpdate) RemoveRelToIDs(ids ...int) *SenseUpdate {
+	su.mutation.RemoveRelToIDs(ids...)
+	return su
+}
+
+// RemoveRelTo removes "relTo" edges to SenseRelation entities.
+func (su *SenseUpdate) RemoveRelTo(s ...*SenseRelation) *SenseUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return su.RemoveRelToIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -178,6 +251,96 @@ func (su *SenseUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if su.mutation.RelFromCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelFromTable,
+			Columns: []string{sense.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.RemovedRelFromIDs(); len(nodes) > 0 && !su.mutation.RelFromCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelFromTable,
+			Columns: []string{sense.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.RelFromIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelFromTable,
+			Columns: []string{sense.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if su.mutation.RelToCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelToTable,
+			Columns: []string{sense.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.RemovedRelToIDs(); len(nodes) > 0 && !su.mutation.RelToCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelToTable,
+			Columns: []string{sense.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.RelToIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelToTable,
+			Columns: []string{sense.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, su.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{sense.Label}
@@ -236,6 +399,36 @@ func (suo *SenseUpdateOne) SetLemma(l *Lemma) *SenseUpdateOne {
 	return suo.SetLemmaID(l.ID)
 }
 
+// AddRelFromIDs adds the "relFrom" edge to the SenseRelation entity by IDs.
+func (suo *SenseUpdateOne) AddRelFromIDs(ids ...int) *SenseUpdateOne {
+	suo.mutation.AddRelFromIDs(ids...)
+	return suo
+}
+
+// AddRelFrom adds the "relFrom" edges to the SenseRelation entity.
+func (suo *SenseUpdateOne) AddRelFrom(s ...*SenseRelation) *SenseUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return suo.AddRelFromIDs(ids...)
+}
+
+// AddRelToIDs adds the "relTo" edge to the SenseRelation entity by IDs.
+func (suo *SenseUpdateOne) AddRelToIDs(ids ...int) *SenseUpdateOne {
+	suo.mutation.AddRelToIDs(ids...)
+	return suo
+}
+
+// AddRelTo adds the "relTo" edges to the SenseRelation entity.
+func (suo *SenseUpdateOne) AddRelTo(s ...*SenseRelation) *SenseUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return suo.AddRelToIDs(ids...)
+}
+
 // Mutation returns the SenseMutation object of the builder.
 func (suo *SenseUpdateOne) Mutation() *SenseMutation {
 	return suo.mutation
@@ -251,6 +444,48 @@ func (suo *SenseUpdateOne) ClearSynset() *SenseUpdateOne {
 func (suo *SenseUpdateOne) ClearLemma() *SenseUpdateOne {
 	suo.mutation.ClearLemma()
 	return suo
+}
+
+// ClearRelFrom clears all "relFrom" edges to the SenseRelation entity.
+func (suo *SenseUpdateOne) ClearRelFrom() *SenseUpdateOne {
+	suo.mutation.ClearRelFrom()
+	return suo
+}
+
+// RemoveRelFromIDs removes the "relFrom" edge to SenseRelation entities by IDs.
+func (suo *SenseUpdateOne) RemoveRelFromIDs(ids ...int) *SenseUpdateOne {
+	suo.mutation.RemoveRelFromIDs(ids...)
+	return suo
+}
+
+// RemoveRelFrom removes "relFrom" edges to SenseRelation entities.
+func (suo *SenseUpdateOne) RemoveRelFrom(s ...*SenseRelation) *SenseUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return suo.RemoveRelFromIDs(ids...)
+}
+
+// ClearRelTo clears all "relTo" edges to the SenseRelation entity.
+func (suo *SenseUpdateOne) ClearRelTo() *SenseUpdateOne {
+	suo.mutation.ClearRelTo()
+	return suo
+}
+
+// RemoveRelToIDs removes the "relTo" edge to SenseRelation entities by IDs.
+func (suo *SenseUpdateOne) RemoveRelToIDs(ids ...int) *SenseUpdateOne {
+	suo.mutation.RemoveRelToIDs(ids...)
+	return suo
+}
+
+// RemoveRelTo removes "relTo" edges to SenseRelation entities.
+func (suo *SenseUpdateOne) RemoveRelTo(s ...*SenseRelation) *SenseUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return suo.RemoveRelToIDs(ids...)
 }
 
 // Where appends a list predicates to the SenseUpdate builder.
@@ -370,6 +605,96 @@ func (suo *SenseUpdateOne) sqlSave(ctx context.Context) (_node *Sense, err error
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(lemma.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if suo.mutation.RelFromCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelFromTable,
+			Columns: []string{sense.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.RemovedRelFromIDs(); len(nodes) > 0 && !suo.mutation.RelFromCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelFromTable,
+			Columns: []string{sense.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.RelFromIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelFromTable,
+			Columns: []string{sense.RelFromColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if suo.mutation.RelToCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelToTable,
+			Columns: []string{sense.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.RemovedRelToIDs(); len(nodes) > 0 && !suo.mutation.RelToCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelToTable,
+			Columns: []string{sense.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.RelToIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   sense.RelToTable,
+			Columns: []string{sense.RelToColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(senserelation.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -25,5 +25,10 @@ func (Sense) Edges() []ent.Edge {
 			Unique(),
 		edge.To("lemma", Lemma.Type).
 			Unique(),
+
+		edge.From("relFrom", SenseRelation.Type).
+			Ref("to"),
+		edge.From("relTo", SenseRelation.Type).
+			Ref("from"),
 	}
 }

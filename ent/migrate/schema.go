@@ -66,6 +66,33 @@ var (
 			},
 		},
 	}
+	// SenseRelationsColumns holds the columns for the "sense_relations" table.
+	SenseRelationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "rel_type", Type: field.TypeString},
+		{Name: "sense_relation_from", Type: field.TypeString},
+		{Name: "sense_relation_to", Type: field.TypeString},
+	}
+	// SenseRelationsTable holds the schema information for the "sense_relations" table.
+	SenseRelationsTable = &schema.Table{
+		Name:       "sense_relations",
+		Columns:    SenseRelationsColumns,
+		PrimaryKey: []*schema.Column{SenseRelationsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "sense_relations_senses_from",
+				Columns:    []*schema.Column{SenseRelationsColumns[2]},
+				RefColumns: []*schema.Column{SensesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "sense_relations_senses_to",
+				Columns:    []*schema.Column{SenseRelationsColumns[3]},
+				RefColumns: []*schema.Column{SensesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// SynsetsColumns holds the columns for the "synsets" table.
 	SynsetsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString},
@@ -77,12 +104,41 @@ var (
 		Columns:    SynsetsColumns,
 		PrimaryKey: []*schema.Column{SynsetsColumns[0]},
 	}
+	// SynsetRelationsColumns holds the columns for the "synset_relations" table.
+	SynsetRelationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "rel_type", Type: field.TypeString},
+		{Name: "synset_relation_from", Type: field.TypeString},
+		{Name: "synset_relation_to", Type: field.TypeString},
+	}
+	// SynsetRelationsTable holds the schema information for the "synset_relations" table.
+	SynsetRelationsTable = &schema.Table{
+		Name:       "synset_relations",
+		Columns:    SynsetRelationsColumns,
+		PrimaryKey: []*schema.Column{SynsetRelationsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "synset_relations_synsets_from",
+				Columns:    []*schema.Column{SynsetRelationsColumns[2]},
+				RefColumns: []*schema.Column{SynsetsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "synset_relations_synsets_to",
+				Columns:    []*schema.Column{SynsetRelationsColumns[3]},
+				RefColumns: []*schema.Column{SynsetsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		DefinitionsTable,
 		LemmasTable,
 		SensesTable,
+		SenseRelationsTable,
 		SynsetsTable,
+		SynsetRelationsTable,
 	}
 )
 
@@ -90,4 +146,8 @@ func init() {
 	DefinitionsTable.ForeignKeys[0].RefTable = SynsetsTable
 	SensesTable.ForeignKeys[0].RefTable = SynsetsTable
 	SensesTable.ForeignKeys[1].RefTable = LemmasTable
+	SenseRelationsTable.ForeignKeys[0].RefTable = SensesTable
+	SenseRelationsTable.ForeignKeys[1].RefTable = SensesTable
+	SynsetRelationsTable.ForeignKeys[0].RefTable = SynsetsTable
+	SynsetRelationsTable.ForeignKeys[1].RefTable = SynsetsTable
 }

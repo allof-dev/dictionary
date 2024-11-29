@@ -45,6 +45,18 @@ func (f SenseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SenseMutation", m)
 }
 
+// The SenseRelationFunc type is an adapter to allow the use of ordinary
+// function as SenseRelation mutator.
+type SenseRelationFunc func(context.Context, *ent.SenseRelationMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SenseRelationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SenseRelationMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SenseRelationMutation", m)
+}
+
 // The SynsetFunc type is an adapter to allow the use of ordinary
 // function as Synset mutator.
 type SynsetFunc func(context.Context, *ent.SynsetMutation) (ent.Value, error)
@@ -55,6 +67,18 @@ func (f SynsetFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SynsetMutation", m)
+}
+
+// The SynsetRelationFunc type is an adapter to allow the use of ordinary
+// function as SynsetRelation mutator.
+type SynsetRelationFunc func(context.Context, *ent.SynsetRelationMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SynsetRelationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SynsetRelationMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SynsetRelationMutation", m)
 }
 
 // Condition is a hook condition function.

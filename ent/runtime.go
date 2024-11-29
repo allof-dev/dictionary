@@ -7,7 +7,9 @@ import (
 	"github.com/allof-dev/dictionary/ent/lemma"
 	"github.com/allof-dev/dictionary/ent/schema"
 	"github.com/allof-dev/dictionary/ent/sense"
+	"github.com/allof-dev/dictionary/ent/senserelation"
 	"github.com/allof-dev/dictionary/ent/synset"
+	"github.com/allof-dev/dictionary/ent/synsetrelation"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -40,6 +42,12 @@ func init() {
 	senseDescID := senseFields[0].Descriptor()
 	// sense.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	sense.IDValidator = senseDescID.Validators[0].(func(string) error)
+	senserelationFields := schema.SenseRelation{}.Fields()
+	_ = senserelationFields
+	// senserelationDescRelType is the schema descriptor for relType field.
+	senserelationDescRelType := senserelationFields[0].Descriptor()
+	// senserelation.RelTypeValidator is a validator for the "relType" field. It is called by the builders before save.
+	senserelation.RelTypeValidator = senserelationDescRelType.Validators[0].(func(string) error)
 	synsetFields := schema.Synset{}.Fields()
 	_ = synsetFields
 	// synsetDescPartOfSpeech is the schema descriptor for partOfSpeech field.
@@ -50,4 +58,10 @@ func init() {
 	synsetDescID := synsetFields[0].Descriptor()
 	// synset.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	synset.IDValidator = synsetDescID.Validators[0].(func(string) error)
+	synsetrelationFields := schema.SynsetRelation{}.Fields()
+	_ = synsetrelationFields
+	// synsetrelationDescRelType is the schema descriptor for relType field.
+	synsetrelationDescRelType := synsetrelationFields[0].Descriptor()
+	// synsetrelation.RelTypeValidator is a validator for the "relType" field. It is called by the builders before save.
+	synsetrelation.RelTypeValidator = synsetrelationDescRelType.Validators[0].(func(string) error)
 }

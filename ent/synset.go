@@ -28,9 +28,13 @@ type Synset struct {
 type SynsetEdges struct {
 	// Definitions holds the value of the definitions edge.
 	Definitions []*Definition `json:"definitions,omitempty"`
+	// RelFrom holds the value of the relFrom edge.
+	RelFrom []*SynsetRelation `json:"relFrom,omitempty"`
+	// RelTo holds the value of the relTo edge.
+	RelTo []*SynsetRelation `json:"relTo,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [3]bool
 }
 
 // DefinitionsOrErr returns the Definitions value or an error if the edge
@@ -40,6 +44,24 @@ func (e SynsetEdges) DefinitionsOrErr() ([]*Definition, error) {
 		return e.Definitions, nil
 	}
 	return nil, &NotLoadedError{edge: "definitions"}
+}
+
+// RelFromOrErr returns the RelFrom value or an error if the edge
+// was not loaded in eager-loading.
+func (e SynsetEdges) RelFromOrErr() ([]*SynsetRelation, error) {
+	if e.loadedTypes[1] {
+		return e.RelFrom, nil
+	}
+	return nil, &NotLoadedError{edge: "relFrom"}
+}
+
+// RelToOrErr returns the RelTo value or an error if the edge
+// was not loaded in eager-loading.
+func (e SynsetEdges) RelToOrErr() ([]*SynsetRelation, error) {
+	if e.loadedTypes[2] {
+		return e.RelTo, nil
+	}
+	return nil, &NotLoadedError{edge: "relTo"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -92,6 +114,16 @@ func (s *Synset) Value(name string) (ent.Value, error) {
 // QueryDefinitions queries the "definitions" edge of the Synset entity.
 func (s *Synset) QueryDefinitions() *DefinitionQuery {
 	return NewSynsetClient(s.config).QueryDefinitions(s)
+}
+
+// QueryRelFrom queries the "relFrom" edge of the Synset entity.
+func (s *Synset) QueryRelFrom() *SynsetRelationQuery {
+	return NewSynsetClient(s.config).QueryRelFrom(s)
+}
+
+// QueryRelTo queries the "relTo" edge of the Synset entity.
+func (s *Synset) QueryRelTo() *SynsetRelationQuery {
+	return NewSynsetClient(s.config).QueryRelTo(s)
 }
 
 // Update returns a builder for updating this Synset.
