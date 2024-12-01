@@ -49,10 +49,11 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 		return fmt.Errorf("fail to auto migration: %w", err)
 	}
 
+	tx, _ := c.Tx(ctx)
 	{
 		fmt.Println("Creating lemmas...")
 		for _, l := range lexicon.LexicalEntries {
-			_, err := c.Lemma.Create().
+			_, err := tx.Lemma.Create().
 				SetID(l.ID).
 				SetPartOfSpeech(l.Lemma.PartOfSpeech).
 				SetWrittenForm(l.Lemma.WrittenForm).
@@ -67,14 +68,14 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 		for _, s := range lexicon.Synsets {
 			definitions := make([]int, len(s.Definitions))
 			for i, def := range s.Definitions {
-				if s, err := c.Definition.Create().SetText(def).Save(ctx); err != nil {
+				if s, err := tx.Definition.Create().SetText(def).Save(ctx); err != nil {
 					return fmt.Errorf("failed to save definition: %w", err)
 				} else {
 					definitions[i] = s.ID
 				}
 			}
 
-			req := c.Synset.Create()
+			req := tx.Synset.Create()
 			req.SetID(s.ID)
 			req.AddDefinitionIDs(definitions...)
 			req.SetPartOfSpeech(s.PartOfSpeech)
@@ -87,7 +88,7 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 		fmt.Println("Creating senses...")
 		for _, l := range lexicon.LexicalEntries {
 			for _, s := range l.Senses {
-				_, err := c.Sense.Create().
+				_, err := tx.Sense.Create().
 					SetID(s.ID).
 					SetLemmaID(l.ID).
 					SetSynsetID(s.Synset).
@@ -105,13 +106,13 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 				var reqs []*ent.SenseRelationCreate
 				for _, rel := range s.SenseRelations {
 					reqs = append(reqs,
-						c.SenseRelation.Create().
+						tx.SenseRelation.Create().
 							SetRelType(rel.RelType).
 							SetFromID(s.ID).
 							SetToID(rel.Target),
 					)
 				}
-				if _, err := c.SenseRelation.CreateBulk(reqs...).Save(ctx); err != nil {
+				if _, err := tx.SenseRelation.CreateBulk(reqs...).Save(ctx); err != nil {
 					return fmt.Errorf("failed to create sense relations: %w", err)
 				}
 			}
@@ -122,15 +123,19 @@ func run(ctx context.Context, lexicon wordnet.Lexicon) error {
 		for _, s := range lexicon.Synsets {
 			var reqs []*ent.SynsetRelationCreate
 			for _, relation := range s.SynsetRelations {
-				reqs = append(reqs, c.SynsetRelation.Create().
+				reqs = append(reqs, tx.SynsetRelation.Create().
 					SetFromID(s.ID).
 					SetToID(relation.Target).
 					SetRelType(relation.RelType))
 			}
-			if _, err := c.SynsetRelation.CreateBulk(reqs...).Save(ctx); err != nil {
+			if _, err := tx.SynsetRelation.CreateBulk(reqs...).Save(ctx); err != nil {
 				return fmt.Errorf("failed to create synset relations: %w", err)
 			}
 		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 
 	return nil
