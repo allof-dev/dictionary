@@ -1,7 +1,10 @@
 WORDNET_FILE=english-wordnet-2024.xml
+DB_NAME=dict.db
 
+run: $(DB_NAME)
+	go run ./cmd/server $(DB_NAME)
 
-dict.db: $(WORDNET_FILE)
+$(DB_NAME): $(WORDNET_FILE)
 	go run ./cmd/generate/db $(WORDNET_FILE) $@
 
 $(WORDNET_FILE):
