@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/allof-dev/dictionary/ent/definition"
+	"github.com/allof-dev/dictionary/ent/sense"
 	"github.com/allof-dev/dictionary/ent/synset"
 	"github.com/allof-dev/dictionary/ent/synsetrelation"
 )
@@ -46,6 +47,21 @@ func (sc *SynsetCreate) AddDefinitions(d ...*Definition) *SynsetCreate {
 		ids[i] = d[i].ID
 	}
 	return sc.AddDefinitionIDs(ids...)
+}
+
+// AddSenseIDs adds the "sense" edge to the Sense entity by IDs.
+func (sc *SynsetCreate) AddSenseIDs(ids ...string) *SynsetCreate {
+	sc.mutation.AddSenseIDs(ids...)
+	return sc
+}
+
+// AddSense adds the "sense" edges to the Sense entity.
+func (sc *SynsetCreate) AddSense(s ...*Sense) *SynsetCreate {
+	ids := make([]string, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return sc.AddSenseIDs(ids...)
 }
 
 // AddRelFromIDs adds the "relFrom" edge to the SynsetRelation entity by IDs.
@@ -173,6 +189,22 @@ func (sc *SynsetCreate) createSpec() (*Synset, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(definition.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := sc.mutation.SenseIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.SenseTable,
+			Columns: []string{synset.SenseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sense.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

@@ -1013,6 +1013,22 @@ func (c *SynsetClient) QueryDefinitions(s *Synset) *DefinitionQuery {
 	return query
 }
 
+// QuerySense queries the sense edge of a Synset.
+func (c *SynsetClient) QuerySense(s *Synset) *SenseQuery {
+	query := (&SenseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(synset.Table, synset.FieldID, id),
+			sqlgraph.To(sense.Table, sense.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, synset.SenseTable, synset.SenseColumn),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryRelFrom queries the relFrom edge of a Synset.
 func (c *SynsetClient) QueryRelFrom(s *Synset) *SynsetRelationQuery {
 	query := (&SynsetRelationClient{config: c.config}).Query()

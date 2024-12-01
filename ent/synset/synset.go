@@ -16,6 +16,8 @@ const (
 	FieldPartOfSpeech = "part_of_speech"
 	// EdgeDefinitions holds the string denoting the definitions edge name in mutations.
 	EdgeDefinitions = "definitions"
+	// EdgeSense holds the string denoting the sense edge name in mutations.
+	EdgeSense = "sense"
 	// EdgeRelFrom holds the string denoting the relfrom edge name in mutations.
 	EdgeRelFrom = "relFrom"
 	// EdgeRelTo holds the string denoting the relto edge name in mutations.
@@ -29,6 +31,13 @@ const (
 	DefinitionsInverseTable = "definitions"
 	// DefinitionsColumn is the table column denoting the definitions relation/edge.
 	DefinitionsColumn = "synset_definitions"
+	// SenseTable is the table that holds the sense relation/edge.
+	SenseTable = "senses"
+	// SenseInverseTable is the table name for the Sense entity.
+	// It exists in this package in order to avoid circular dependency with the "sense" package.
+	SenseInverseTable = "senses"
+	// SenseColumn is the table column denoting the sense relation/edge.
+	SenseColumn = "sense_synset"
 	// RelFromTable is the table that holds the relFrom relation/edge.
 	RelFromTable = "synset_relations"
 	// RelFromInverseTable is the table name for the SynsetRelation entity.
@@ -95,6 +104,20 @@ func ByDefinitions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// BySenseCount orders the results by sense count.
+func BySenseCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newSenseStep(), opts...)
+	}
+}
+
+// BySense orders the results by sense terms.
+func BySense(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSenseStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByRelFromCount orders the results by relFrom count.
 func ByRelFromCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -127,6 +150,13 @@ func newDefinitionsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(DefinitionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, DefinitionsTable, DefinitionsColumn),
+	)
+}
+func newSenseStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SenseInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, SenseTable, SenseColumn),
 	)
 }
 func newRelFromStep() *sqlgraph.Step {

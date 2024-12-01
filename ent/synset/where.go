@@ -156,6 +156,29 @@ func HasDefinitionsWith(preds ...predicate.Definition) predicate.Synset {
 	})
 }
 
+// HasSense applies the HasEdge predicate on the "sense" edge.
+func HasSense() predicate.Synset {
+	return predicate.Synset(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, SenseTable, SenseColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasSenseWith applies the HasEdge predicate on the "sense" edge with a given conditions (other predicates).
+func HasSenseWith(preds ...predicate.Sense) predicate.Synset {
+	return predicate.Synset(func(s *sql.Selector) {
+		step := newSenseStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasRelFrom applies the HasEdge predicate on the "relFrom" edge.
 func HasRelFrom() predicate.Synset {
 	return predicate.Synset(func(s *sql.Selector) {

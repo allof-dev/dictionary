@@ -1868,6 +1868,9 @@ type SynsetMutation struct {
 	definitions        map[int]struct{}
 	removeddefinitions map[int]struct{}
 	cleareddefinitions bool
+	sense              map[string]struct{}
+	removedsense       map[string]struct{}
+	clearedsense       bool
 	relFrom            map[int]struct{}
 	removedrelFrom     map[int]struct{}
 	clearedrelFrom     bool
@@ -2071,6 +2074,60 @@ func (m *SynsetMutation) ResetDefinitions() {
 	m.definitions = nil
 	m.cleareddefinitions = false
 	m.removeddefinitions = nil
+}
+
+// AddSenseIDs adds the "sense" edge to the Sense entity by ids.
+func (m *SynsetMutation) AddSenseIDs(ids ...string) {
+	if m.sense == nil {
+		m.sense = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.sense[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSense clears the "sense" edge to the Sense entity.
+func (m *SynsetMutation) ClearSense() {
+	m.clearedsense = true
+}
+
+// SenseCleared reports if the "sense" edge to the Sense entity was cleared.
+func (m *SynsetMutation) SenseCleared() bool {
+	return m.clearedsense
+}
+
+// RemoveSenseIDs removes the "sense" edge to the Sense entity by IDs.
+func (m *SynsetMutation) RemoveSenseIDs(ids ...string) {
+	if m.removedsense == nil {
+		m.removedsense = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.sense, ids[i])
+		m.removedsense[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSense returns the removed IDs of the "sense" edge to the Sense entity.
+func (m *SynsetMutation) RemovedSenseIDs() (ids []string) {
+	for id := range m.removedsense {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SenseIDs returns the "sense" edge IDs in the mutation.
+func (m *SynsetMutation) SenseIDs() (ids []string) {
+	for id := range m.sense {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSense resets all changes to the "sense" edge.
+func (m *SynsetMutation) ResetSense() {
+	m.sense = nil
+	m.clearedsense = false
+	m.removedsense = nil
 }
 
 // AddRelFromIDs adds the "relFrom" edge to the SynsetRelation entity by ids.
@@ -2314,9 +2371,12 @@ func (m *SynsetMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *SynsetMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.definitions != nil {
 		edges = append(edges, synset.EdgeDefinitions)
+	}
+	if m.sense != nil {
+		edges = append(edges, synset.EdgeSense)
 	}
 	if m.relFrom != nil {
 		edges = append(edges, synset.EdgeRelFrom)
@@ -2334,6 +2394,12 @@ func (m *SynsetMutation) AddedIDs(name string) []ent.Value {
 	case synset.EdgeDefinitions:
 		ids := make([]ent.Value, 0, len(m.definitions))
 		for id := range m.definitions {
+			ids = append(ids, id)
+		}
+		return ids
+	case synset.EdgeSense:
+		ids := make([]ent.Value, 0, len(m.sense))
+		for id := range m.sense {
 			ids = append(ids, id)
 		}
 		return ids
@@ -2355,9 +2421,12 @@ func (m *SynsetMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *SynsetMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.removeddefinitions != nil {
 		edges = append(edges, synset.EdgeDefinitions)
+	}
+	if m.removedsense != nil {
+		edges = append(edges, synset.EdgeSense)
 	}
 	if m.removedrelFrom != nil {
 		edges = append(edges, synset.EdgeRelFrom)
@@ -2375,6 +2444,12 @@ func (m *SynsetMutation) RemovedIDs(name string) []ent.Value {
 	case synset.EdgeDefinitions:
 		ids := make([]ent.Value, 0, len(m.removeddefinitions))
 		for id := range m.removeddefinitions {
+			ids = append(ids, id)
+		}
+		return ids
+	case synset.EdgeSense:
+		ids := make([]ent.Value, 0, len(m.removedsense))
+		for id := range m.removedsense {
 			ids = append(ids, id)
 		}
 		return ids
@@ -2396,9 +2471,12 @@ func (m *SynsetMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *SynsetMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.cleareddefinitions {
 		edges = append(edges, synset.EdgeDefinitions)
+	}
+	if m.clearedsense {
+		edges = append(edges, synset.EdgeSense)
 	}
 	if m.clearedrelFrom {
 		edges = append(edges, synset.EdgeRelFrom)
@@ -2415,6 +2493,8 @@ func (m *SynsetMutation) EdgeCleared(name string) bool {
 	switch name {
 	case synset.EdgeDefinitions:
 		return m.cleareddefinitions
+	case synset.EdgeSense:
+		return m.clearedsense
 	case synset.EdgeRelFrom:
 		return m.clearedrelFrom
 	case synset.EdgeRelTo:
@@ -2437,6 +2517,9 @@ func (m *SynsetMutation) ResetEdge(name string) error {
 	switch name {
 	case synset.EdgeDefinitions:
 		m.ResetDefinitions()
+		return nil
+	case synset.EdgeSense:
+		m.ResetSense()
 		return nil
 	case synset.EdgeRelFrom:
 		m.ResetRelFrom()

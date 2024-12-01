@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/allof-dev/dictionary/ent/definition"
 	"github.com/allof-dev/dictionary/ent/predicate"
+	"github.com/allof-dev/dictionary/ent/sense"
 	"github.com/allof-dev/dictionary/ent/synset"
 	"github.com/allof-dev/dictionary/ent/synsetrelation"
 )
@@ -26,6 +27,7 @@ type SynsetQuery struct {
 	inters          []Interceptor
 	predicates      []predicate.Synset
 	withDefinitions *DefinitionQuery
+	withSense       *SenseQuery
 	withRelFrom     *SynsetRelationQuery
 	withRelTo       *SynsetRelationQuery
 	// intermediate query (i.e. traversal path).
@@ -79,6 +81,28 @@ func (sq *SynsetQuery) QueryDefinitions() *DefinitionQuery {
 			sqlgraph.From(synset.Table, synset.FieldID, selector),
 			sqlgraph.To(definition.Table, definition.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, synset.DefinitionsTable, synset.DefinitionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QuerySense chains the current query on the "sense" edge.
+func (sq *SynsetQuery) QuerySense() *SenseQuery {
+	query := (&SenseClient{config: sq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := sq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := sq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(synset.Table, synset.FieldID, selector),
+			sqlgraph.To(sense.Table, sense.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, synset.SenseTable, synset.SenseColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(sq.driver.Dialect(), step)
 		return fromU, nil
@@ -323,6 +347,7 @@ func (sq *SynsetQuery) Clone() *SynsetQuery {
 		inters:          append([]Interceptor{}, sq.inters...),
 		predicates:      append([]predicate.Synset{}, sq.predicates...),
 		withDefinitions: sq.withDefinitions.Clone(),
+		withSense:       sq.withSense.Clone(),
 		withRelFrom:     sq.withRelFrom.Clone(),
 		withRelTo:       sq.withRelTo.Clone(),
 		// clone intermediate query.
@@ -339,6 +364,17 @@ func (sq *SynsetQuery) WithDefinitions(opts ...func(*DefinitionQuery)) *SynsetQu
 		opt(query)
 	}
 	sq.withDefinitions = query
+	return sq
+}
+
+// WithSense tells the query-builder to eager-load the nodes that are connected to
+// the "sense" edge. The optional arguments are used to configure the query builder of the edge.
+func (sq *SynsetQuery) WithSense(opts ...func(*SenseQuery)) *SynsetQuery {
+	query := (&SenseClient{config: sq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	sq.withSense = query
 	return sq
 }
 
@@ -442,8 +478,9 @@ func (sq *SynsetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Synse
 	var (
 		nodes       = []*Synset{}
 		_spec       = sq.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			sq.withDefinitions != nil,
+			sq.withSense != nil,
 			sq.withRelFrom != nil,
 			sq.withRelTo != nil,
 		}
@@ -470,6 +507,13 @@ func (sq *SynsetQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Synse
 		if err := sq.loadDefinitions(ctx, query, nodes,
 			func(n *Synset) { n.Edges.Definitions = []*Definition{} },
 			func(n *Synset, e *Definition) { n.Edges.Definitions = append(n.Edges.Definitions, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := sq.withSense; query != nil {
+		if err := sq.loadSense(ctx, query, nodes,
+			func(n *Synset) { n.Edges.Sense = []*Sense{} },
+			func(n *Synset, e *Sense) { n.Edges.Sense = append(n.Edges.Sense, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -516,6 +560,37 @@ func (sq *SynsetQuery) loadDefinitions(ctx context.Context, query *DefinitionQue
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "synset_definitions" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (sq *SynsetQuery) loadSense(ctx context.Context, query *SenseQuery, nodes []*Synset, init func(*Synset), assign func(*Synset, *Sense)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*Synset)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.Sense(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(synset.SenseColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.sense_synset
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "sense_synset" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "sense_synset" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/allof-dev/dictionary/ent/definition"
 	"github.com/allof-dev/dictionary/ent/predicate"
+	"github.com/allof-dev/dictionary/ent/sense"
 	"github.com/allof-dev/dictionary/ent/synset"
 	"github.com/allof-dev/dictionary/ent/synsetrelation"
 )
@@ -56,6 +57,21 @@ func (su *SynsetUpdate) AddDefinitions(d ...*Definition) *SynsetUpdate {
 		ids[i] = d[i].ID
 	}
 	return su.AddDefinitionIDs(ids...)
+}
+
+// AddSenseIDs adds the "sense" edge to the Sense entity by IDs.
+func (su *SynsetUpdate) AddSenseIDs(ids ...string) *SynsetUpdate {
+	su.mutation.AddSenseIDs(ids...)
+	return su
+}
+
+// AddSense adds the "sense" edges to the Sense entity.
+func (su *SynsetUpdate) AddSense(s ...*Sense) *SynsetUpdate {
+	ids := make([]string, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return su.AddSenseIDs(ids...)
 }
 
 // AddRelFromIDs adds the "relFrom" edge to the SynsetRelation entity by IDs.
@@ -112,6 +128,27 @@ func (su *SynsetUpdate) RemoveDefinitions(d ...*Definition) *SynsetUpdate {
 		ids[i] = d[i].ID
 	}
 	return su.RemoveDefinitionIDs(ids...)
+}
+
+// ClearSense clears all "sense" edges to the Sense entity.
+func (su *SynsetUpdate) ClearSense() *SynsetUpdate {
+	su.mutation.ClearSense()
+	return su
+}
+
+// RemoveSenseIDs removes the "sense" edge to Sense entities by IDs.
+func (su *SynsetUpdate) RemoveSenseIDs(ids ...string) *SynsetUpdate {
+	su.mutation.RemoveSenseIDs(ids...)
+	return su
+}
+
+// RemoveSense removes "sense" edges to Sense entities.
+func (su *SynsetUpdate) RemoveSense(s ...*Sense) *SynsetUpdate {
+	ids := make([]string, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return su.RemoveSenseIDs(ids...)
 }
 
 // ClearRelFrom clears all "relFrom" edges to the SynsetRelation entity.
@@ -246,6 +283,51 @@ func (su *SynsetUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(definition.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if su.mutation.SenseCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.SenseTable,
+			Columns: []string{synset.SenseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sense.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.RemovedSenseIDs(); len(nodes) > 0 && !su.mutation.SenseCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.SenseTable,
+			Columns: []string{synset.SenseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sense.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := su.mutation.SenseIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.SenseTable,
+			Columns: []string{synset.SenseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sense.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -392,6 +474,21 @@ func (suo *SynsetUpdateOne) AddDefinitions(d ...*Definition) *SynsetUpdateOne {
 	return suo.AddDefinitionIDs(ids...)
 }
 
+// AddSenseIDs adds the "sense" edge to the Sense entity by IDs.
+func (suo *SynsetUpdateOne) AddSenseIDs(ids ...string) *SynsetUpdateOne {
+	suo.mutation.AddSenseIDs(ids...)
+	return suo
+}
+
+// AddSense adds the "sense" edges to the Sense entity.
+func (suo *SynsetUpdateOne) AddSense(s ...*Sense) *SynsetUpdateOne {
+	ids := make([]string, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return suo.AddSenseIDs(ids...)
+}
+
 // AddRelFromIDs adds the "relFrom" edge to the SynsetRelation entity by IDs.
 func (suo *SynsetUpdateOne) AddRelFromIDs(ids ...int) *SynsetUpdateOne {
 	suo.mutation.AddRelFromIDs(ids...)
@@ -446,6 +543,27 @@ func (suo *SynsetUpdateOne) RemoveDefinitions(d ...*Definition) *SynsetUpdateOne
 		ids[i] = d[i].ID
 	}
 	return suo.RemoveDefinitionIDs(ids...)
+}
+
+// ClearSense clears all "sense" edges to the Sense entity.
+func (suo *SynsetUpdateOne) ClearSense() *SynsetUpdateOne {
+	suo.mutation.ClearSense()
+	return suo
+}
+
+// RemoveSenseIDs removes the "sense" edge to Sense entities by IDs.
+func (suo *SynsetUpdateOne) RemoveSenseIDs(ids ...string) *SynsetUpdateOne {
+	suo.mutation.RemoveSenseIDs(ids...)
+	return suo
+}
+
+// RemoveSense removes "sense" edges to Sense entities.
+func (suo *SynsetUpdateOne) RemoveSense(s ...*Sense) *SynsetUpdateOne {
+	ids := make([]string, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
+	}
+	return suo.RemoveSenseIDs(ids...)
 }
 
 // ClearRelFrom clears all "relFrom" edges to the SynsetRelation entity.
@@ -610,6 +728,51 @@ func (suo *SynsetUpdateOne) sqlSave(ctx context.Context) (_node *Synset, err err
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(definition.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if suo.mutation.SenseCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.SenseTable,
+			Columns: []string{synset.SenseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sense.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.RemovedSenseIDs(); len(nodes) > 0 && !suo.mutation.SenseCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.SenseTable,
+			Columns: []string{synset.SenseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sense.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := suo.mutation.SenseIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   synset.SenseTable,
+			Columns: []string{synset.SenseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sense.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

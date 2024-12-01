@@ -28,13 +28,15 @@ type Synset struct {
 type SynsetEdges struct {
 	// Definitions holds the value of the definitions edge.
 	Definitions []*Definition `json:"definitions,omitempty"`
+	// Sense holds the value of the sense edge.
+	Sense []*Sense `json:"sense,omitempty"`
 	// RelFrom holds the value of the relFrom edge.
 	RelFrom []*SynsetRelation `json:"relFrom,omitempty"`
 	// RelTo holds the value of the relTo edge.
 	RelTo []*SynsetRelation `json:"relTo,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // DefinitionsOrErr returns the Definitions value or an error if the edge
@@ -46,10 +48,19 @@ func (e SynsetEdges) DefinitionsOrErr() ([]*Definition, error) {
 	return nil, &NotLoadedError{edge: "definitions"}
 }
 
+// SenseOrErr returns the Sense value or an error if the edge
+// was not loaded in eager-loading.
+func (e SynsetEdges) SenseOrErr() ([]*Sense, error) {
+	if e.loadedTypes[1] {
+		return e.Sense, nil
+	}
+	return nil, &NotLoadedError{edge: "sense"}
+}
+
 // RelFromOrErr returns the RelFrom value or an error if the edge
 // was not loaded in eager-loading.
 func (e SynsetEdges) RelFromOrErr() ([]*SynsetRelation, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.RelFrom, nil
 	}
 	return nil, &NotLoadedError{edge: "relFrom"}
@@ -58,7 +69,7 @@ func (e SynsetEdges) RelFromOrErr() ([]*SynsetRelation, error) {
 // RelToOrErr returns the RelTo value or an error if the edge
 // was not loaded in eager-loading.
 func (e SynsetEdges) RelToOrErr() ([]*SynsetRelation, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.RelTo, nil
 	}
 	return nil, &NotLoadedError{edge: "relTo"}
@@ -114,6 +125,11 @@ func (s *Synset) Value(name string) (ent.Value, error) {
 // QueryDefinitions queries the "definitions" edge of the Synset entity.
 func (s *Synset) QueryDefinitions() *DefinitionQuery {
 	return NewSynsetClient(s.config).QueryDefinitions(s)
+}
+
+// QuerySense queries the "sense" edge of the Synset entity.
+func (s *Synset) QuerySense() *SenseQuery {
+	return NewSynsetClient(s.config).QuerySense(s)
 }
 
 // QueryRelFrom queries the "relFrom" edge of the Synset entity.
