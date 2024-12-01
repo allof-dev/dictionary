@@ -353,6 +353,22 @@ func (c *DefinitionClient) GetX(ctx context.Context, id int) *Definition {
 	return obj
 }
 
+// QuerySynset queries the synset edge of a Definition.
+func (c *DefinitionClient) QuerySynset(d *Definition) *SynsetQuery {
+	query := (&SynsetClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := d.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(definition.Table, definition.FieldID, id),
+			sqlgraph.To(synset.Table, synset.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, definition.SynsetTable, definition.SynsetColumn),
+		)
+		fromV = sqlgraph.Neighbors(d.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *DefinitionClient) Hooks() []Hook {
 	return c.hooks.Definition

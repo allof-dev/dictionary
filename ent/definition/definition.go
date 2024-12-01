@@ -4,6 +4,7 @@ package definition
 
 import (
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -13,8 +14,17 @@ const (
 	FieldID = "id"
 	// FieldText holds the string denoting the text field in the database.
 	FieldText = "text"
+	// EdgeSynset holds the string denoting the synset edge name in mutations.
+	EdgeSynset = "synset"
 	// Table holds the table name of the definition in the database.
 	Table = "definitions"
+	// SynsetTable is the table that holds the synset relation/edge.
+	SynsetTable = "definitions"
+	// SynsetInverseTable is the table name for the Synset entity.
+	// It exists in this package in order to avoid circular dependency with the "synset" package.
+	SynsetInverseTable = "synsets"
+	// SynsetColumn is the table column denoting the synset relation/edge.
+	SynsetColumn = "synset_definitions"
 )
 
 // Columns holds all SQL columns for definition fields.
@@ -60,4 +70,18 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByText orders the results by the text field.
 func ByText(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldText, opts...).ToFunc()
+}
+
+// BySynsetField orders the results by synset field.
+func BySynsetField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSynsetStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newSynsetStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SynsetInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, SynsetTable, SynsetColumn),
+	)
 }

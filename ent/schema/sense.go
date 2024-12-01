@@ -4,11 +4,19 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 )
 
 // Sense holds the schema definition for the Sense entity.
 type Sense struct {
 	ent.Schema
+}
+
+func (Sense) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Edges("synset"),
+		index.Edges("lemma"),
+	}
 }
 
 // Fields of the Sense.

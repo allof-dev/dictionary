@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/allof-dev/dictionary/ent"
@@ -20,6 +21,8 @@ var (
 
 func main() {
 	ctx := context.Background()
+
+	slog.SetLogLoggerLevel(slog.LevelInfo)
 
 	c, err := prepareDB()
 	if err != nil {
@@ -73,12 +76,14 @@ type Lemma struct {
 
 type Synset struct {
 	ID          string   `json:"id"`
-	Words       []string `json:"word"`
+	Words       []string `json:"words"`
 	Definitions []string `json:"definitions"`
 }
 
 func searchResult(ctx context.Context, c *ent.Client, query string) (result []Lemma, err error) {
 	tmp := []Lemma{}
+
+	beginning := time.Now()
 
 	// find lemmas
 	lemmas, err := c.Lemma.Query().
@@ -100,6 +105,8 @@ func searchResult(ctx context.Context, c *ent.Client, query string) (result []Le
 	if err != nil {
 		return nil, fmt.Errorf("failed to find lemmas: %w", err)
 	}
+
+	slog.Debug("search lemma", "duration", time.Since(beginning))
 
 	for _, lemma := range lemmas {
 		l := Lemma{
@@ -142,6 +149,8 @@ func searchResult(ctx context.Context, c *ent.Client, query string) (result []Le
 		}
 		tmp = append(tmp, l)
 	}
+
+	slog.Info("search complete", "query", query, "duration", time.Since(beginning))
 
 	return tmp, nil
 }

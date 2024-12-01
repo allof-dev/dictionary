@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/allof-dev/dictionary/ent/definition"
+	"github.com/allof-dev/dictionary/ent/synset"
 )
 
 // DefinitionCreate is the builder for creating a Definition entity.
@@ -23,6 +24,25 @@ type DefinitionCreate struct {
 func (dc *DefinitionCreate) SetText(s string) *DefinitionCreate {
 	dc.mutation.SetText(s)
 	return dc
+}
+
+// SetSynsetID sets the "synset" edge to the Synset entity by ID.
+func (dc *DefinitionCreate) SetSynsetID(id string) *DefinitionCreate {
+	dc.mutation.SetSynsetID(id)
+	return dc
+}
+
+// SetNillableSynsetID sets the "synset" edge to the Synset entity by ID if the given value is not nil.
+func (dc *DefinitionCreate) SetNillableSynsetID(id *string) *DefinitionCreate {
+	if id != nil {
+		dc = dc.SetSynsetID(*id)
+	}
+	return dc
+}
+
+// SetSynset sets the "synset" edge to the Synset entity.
+func (dc *DefinitionCreate) SetSynset(s *Synset) *DefinitionCreate {
+	return dc.SetSynsetID(s.ID)
 }
 
 // Mutation returns the DefinitionMutation object of the builder.
@@ -96,6 +116,23 @@ func (dc *DefinitionCreate) createSpec() (*Definition, *sqlgraph.CreateSpec) {
 	if value, ok := dc.mutation.Text(); ok {
 		_spec.SetField(definition.FieldText, field.TypeString, value)
 		_node.Text = value
+	}
+	if nodes := dc.mutation.SynsetIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   definition.SynsetTable,
+			Columns: []string{definition.SynsetColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synset.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.synset_definitions = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

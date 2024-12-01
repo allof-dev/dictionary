@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/allof-dev/dictionary/ent/definition"
 	"github.com/allof-dev/dictionary/ent/predicate"
+	"github.com/allof-dev/dictionary/ent/synset"
 )
 
 // DefinitionUpdate is the builder for updating Definition entities.
@@ -41,9 +42,34 @@ func (du *DefinitionUpdate) SetNillableText(s *string) *DefinitionUpdate {
 	return du
 }
 
+// SetSynsetID sets the "synset" edge to the Synset entity by ID.
+func (du *DefinitionUpdate) SetSynsetID(id string) *DefinitionUpdate {
+	du.mutation.SetSynsetID(id)
+	return du
+}
+
+// SetNillableSynsetID sets the "synset" edge to the Synset entity by ID if the given value is not nil.
+func (du *DefinitionUpdate) SetNillableSynsetID(id *string) *DefinitionUpdate {
+	if id != nil {
+		du = du.SetSynsetID(*id)
+	}
+	return du
+}
+
+// SetSynset sets the "synset" edge to the Synset entity.
+func (du *DefinitionUpdate) SetSynset(s *Synset) *DefinitionUpdate {
+	return du.SetSynsetID(s.ID)
+}
+
 // Mutation returns the DefinitionMutation object of the builder.
 func (du *DefinitionUpdate) Mutation() *DefinitionMutation {
 	return du.mutation
+}
+
+// ClearSynset clears the "synset" edge to the Synset entity.
+func (du *DefinitionUpdate) ClearSynset() *DefinitionUpdate {
+	du.mutation.ClearSynset()
+	return du
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -98,6 +124,35 @@ func (du *DefinitionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := du.mutation.Text(); ok {
 		_spec.SetField(definition.FieldText, field.TypeString, value)
 	}
+	if du.mutation.SynsetCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   definition.SynsetTable,
+			Columns: []string{definition.SynsetColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synset.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := du.mutation.SynsetIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   definition.SynsetTable,
+			Columns: []string{definition.SynsetColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synset.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, du.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{definition.Label}
@@ -132,9 +187,34 @@ func (duo *DefinitionUpdateOne) SetNillableText(s *string) *DefinitionUpdateOne 
 	return duo
 }
 
+// SetSynsetID sets the "synset" edge to the Synset entity by ID.
+func (duo *DefinitionUpdateOne) SetSynsetID(id string) *DefinitionUpdateOne {
+	duo.mutation.SetSynsetID(id)
+	return duo
+}
+
+// SetNillableSynsetID sets the "synset" edge to the Synset entity by ID if the given value is not nil.
+func (duo *DefinitionUpdateOne) SetNillableSynsetID(id *string) *DefinitionUpdateOne {
+	if id != nil {
+		duo = duo.SetSynsetID(*id)
+	}
+	return duo
+}
+
+// SetSynset sets the "synset" edge to the Synset entity.
+func (duo *DefinitionUpdateOne) SetSynset(s *Synset) *DefinitionUpdateOne {
+	return duo.SetSynsetID(s.ID)
+}
+
 // Mutation returns the DefinitionMutation object of the builder.
 func (duo *DefinitionUpdateOne) Mutation() *DefinitionMutation {
 	return duo.mutation
+}
+
+// ClearSynset clears the "synset" edge to the Synset entity.
+func (duo *DefinitionUpdateOne) ClearSynset() *DefinitionUpdateOne {
+	duo.mutation.ClearSynset()
+	return duo
 }
 
 // Where appends a list predicates to the DefinitionUpdate builder.
@@ -218,6 +298,35 @@ func (duo *DefinitionUpdateOne) sqlSave(ctx context.Context) (_node *Definition,
 	}
 	if value, ok := duo.mutation.Text(); ok {
 		_spec.SetField(definition.FieldText, field.TypeString, value)
+	}
+	if duo.mutation.SynsetCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   definition.SynsetTable,
+			Columns: []string{definition.SynsetColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synset.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := duo.mutation.SynsetIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   definition.SynsetTable,
+			Columns: []string{definition.SynsetColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(synset.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Definition{config: duo.config}
 	_spec.Assign = _node.assignValues

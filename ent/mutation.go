@@ -44,6 +44,8 @@ type DefinitionMutation struct {
 	id            *int
 	text          *string
 	clearedFields map[string]struct{}
+	synset        *string
+	clearedsynset bool
 	done          bool
 	oldValue      func(context.Context) (*Definition, error)
 	predicates    []predicate.Definition
@@ -183,6 +185,45 @@ func (m *DefinitionMutation) ResetText() {
 	m.text = nil
 }
 
+// SetSynsetID sets the "synset" edge to the Synset entity by id.
+func (m *DefinitionMutation) SetSynsetID(id string) {
+	m.synset = &id
+}
+
+// ClearSynset clears the "synset" edge to the Synset entity.
+func (m *DefinitionMutation) ClearSynset() {
+	m.clearedsynset = true
+}
+
+// SynsetCleared reports if the "synset" edge to the Synset entity was cleared.
+func (m *DefinitionMutation) SynsetCleared() bool {
+	return m.clearedsynset
+}
+
+// SynsetID returns the "synset" edge ID in the mutation.
+func (m *DefinitionMutation) SynsetID() (id string, exists bool) {
+	if m.synset != nil {
+		return *m.synset, true
+	}
+	return
+}
+
+// SynsetIDs returns the "synset" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SynsetID instead. It exists only for internal usage by the builders.
+func (m *DefinitionMutation) SynsetIDs() (ids []string) {
+	if id := m.synset; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSynset resets all changes to the "synset" edge.
+func (m *DefinitionMutation) ResetSynset() {
+	m.synset = nil
+	m.clearedsynset = false
+}
+
 // Where appends a list predicates to the DefinitionMutation builder.
 func (m *DefinitionMutation) Where(ps ...predicate.Definition) {
 	m.predicates = append(m.predicates, ps...)
@@ -316,19 +357,28 @@ func (m *DefinitionMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DefinitionMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.synset != nil {
+		edges = append(edges, definition.EdgeSynset)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *DefinitionMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case definition.EdgeSynset:
+		if id := m.synset; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DefinitionMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -340,25 +390,42 @@ func (m *DefinitionMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DefinitionMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedsynset {
+		edges = append(edges, definition.EdgeSynset)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *DefinitionMutation) EdgeCleared(name string) bool {
+	switch name {
+	case definition.EdgeSynset:
+		return m.clearedsynset
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *DefinitionMutation) ClearEdge(name string) error {
+	switch name {
+	case definition.EdgeSynset:
+		m.ClearSynset()
+		return nil
+	}
 	return fmt.Errorf("unknown Definition unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *DefinitionMutation) ResetEdge(name string) error {
+	switch name {
+	case definition.EdgeSynset:
+		m.ResetSynset()
+		return nil
+	}
 	return fmt.Errorf("unknown Definition edge %s", name)
 }
 

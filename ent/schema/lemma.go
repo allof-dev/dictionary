@@ -4,11 +4,18 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 )
 
 // Lemma holds the schema definition for the Lemma entity.
 type Lemma struct {
 	ent.Schema
+}
+
+func (Lemma) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("writtenForm"),
+	}
 }
 
 // Fields of the Lemma.

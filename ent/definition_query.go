@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/allof-dev/dictionary/ent/definition"
 	"github.com/allof-dev/dictionary/ent/predicate"
+	"github.com/allof-dev/dictionary/ent/synset"
 )
 
 // DefinitionQuery is the builder for querying Definition entities.
@@ -22,6 +23,7 @@ type DefinitionQuery struct {
 	order      []definition.OrderOption
 	inters     []Interceptor
 	predicates []predicate.Definition
+	withSynset *SynsetQuery
 	withFKs    bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -57,6 +59,28 @@ func (dq *DefinitionQuery) Unique(unique bool) *DefinitionQuery {
 func (dq *DefinitionQuery) Order(o ...definition.OrderOption) *DefinitionQuery {
 	dq.order = append(dq.order, o...)
 	return dq
+}
+
+// QuerySynset chains the current query on the "synset" edge.
+func (dq *DefinitionQuery) QuerySynset() *SynsetQuery {
+	query := (&SynsetClient{config: dq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := dq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := dq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(definition.Table, definition.FieldID, selector),
+			sqlgraph.To(synset.Table, synset.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, definition.SynsetTable, definition.SynsetColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(dq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first Definition entity from the query.
@@ -251,10 +275,22 @@ func (dq *DefinitionQuery) Clone() *DefinitionQuery {
 		order:      append([]definition.OrderOption{}, dq.order...),
 		inters:     append([]Interceptor{}, dq.inters...),
 		predicates: append([]predicate.Definition{}, dq.predicates...),
+		withSynset: dq.withSynset.Clone(),
 		// clone intermediate query.
 		sql:  dq.sql.Clone(),
 		path: dq.path,
 	}
+}
+
+// WithSynset tells the query-builder to eager-load the nodes that are connected to
+// the "synset" edge. The optional arguments are used to configure the query builder of the edge.
+func (dq *DefinitionQuery) WithSynset(opts ...func(*SynsetQuery)) *DefinitionQuery {
+	query := (&SynsetClient{config: dq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	dq.withSynset = query
+	return dq
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -333,10 +369,16 @@ func (dq *DefinitionQuery) prepareQuery(ctx context.Context) error {
 
 func (dq *DefinitionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Definition, error) {
 	var (
-		nodes   = []*Definition{}
-		withFKs = dq.withFKs
-		_spec   = dq.querySpec()
+		nodes       = []*Definition{}
+		withFKs     = dq.withFKs
+		_spec       = dq.querySpec()
+		loadedTypes = [1]bool{
+			dq.withSynset != nil,
+		}
 	)
+	if dq.withSynset != nil {
+		withFKs = true
+	}
 	if withFKs {
 		_spec.Node.Columns = append(_spec.Node.Columns, definition.ForeignKeys...)
 	}
@@ -346,6 +388,7 @@ func (dq *DefinitionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*D
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &Definition{config: dq.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -357,7 +400,46 @@ func (dq *DefinitionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*D
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := dq.withSynset; query != nil {
+		if err := dq.loadSynset(ctx, query, nodes, nil,
+			func(n *Definition, e *Synset) { n.Edges.Synset = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (dq *DefinitionQuery) loadSynset(ctx context.Context, query *SynsetQuery, nodes []*Definition, init func(*Definition), assign func(*Definition, *Synset)) error {
+	ids := make([]string, 0, len(nodes))
+	nodeids := make(map[string][]*Definition)
+	for i := range nodes {
+		if nodes[i].synset_definitions == nil {
+			continue
+		}
+		fk := *nodes[i].synset_definitions
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(synset.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "synset_definitions" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
 }
 
 func (dq *DefinitionQuery) sqlCount(ctx context.Context) (int, error) {

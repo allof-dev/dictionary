@@ -9,6 +9,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/allof-dev/dictionary/ent/definition"
+	"github.com/allof-dev/dictionary/ent/synset"
 )
 
 // Definition is the model entity for the Definition schema.
@@ -17,9 +18,32 @@ type Definition struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// Text holds the value of the "text" field.
-	Text               string `json:"text,omitempty"`
+	Text string `json:"text,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the DefinitionQuery when eager-loading is set.
+	Edges              DefinitionEdges `json:"edges"`
 	synset_definitions *string
 	selectValues       sql.SelectValues
+}
+
+// DefinitionEdges holds the relations/edges for other nodes in the graph.
+type DefinitionEdges struct {
+	// Synset holds the value of the synset edge.
+	Synset *Synset `json:"synset,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// SynsetOrErr returns the Synset value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e DefinitionEdges) SynsetOrErr() (*Synset, error) {
+	if e.Synset != nil {
+		return e.Synset, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: synset.Label}
+	}
+	return nil, &NotLoadedError{edge: "synset"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -78,6 +102,11 @@ func (d *Definition) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (d *Definition) Value(name string) (ent.Value, error) {
 	return d.selectValues.Get(name)
+}
+
+// QuerySynset queries the "synset" edge of the Definition entity.
+func (d *Definition) QuerySynset() *SynsetQuery {
+	return NewDefinitionClient(d.config).QuerySynset(d)
 }
 
 // Update returns a builder for updating this Definition.

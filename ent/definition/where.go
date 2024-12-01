@@ -4,6 +4,7 @@ package definition
 
 import (
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/allof-dev/dictionary/ent/predicate"
 )
 
@@ -120,6 +121,29 @@ func TextEqualFold(v string) predicate.Definition {
 // TextContainsFold applies the ContainsFold predicate on the "text" field.
 func TextContainsFold(v string) predicate.Definition {
 	return predicate.Definition(sql.FieldContainsFold(FieldText, v))
+}
+
+// HasSynset applies the HasEdge predicate on the "synset" edge.
+func HasSynset() predicate.Definition {
+	return predicate.Definition(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, SynsetTable, SynsetColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasSynsetWith applies the HasEdge predicate on the "synset" edge with a given conditions (other predicates).
+func HasSynsetWith(preds ...predicate.Synset) predicate.Definition {
+	return predicate.Definition(func(s *sql.Selector) {
+		step := newSynsetStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

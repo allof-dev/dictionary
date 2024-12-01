@@ -27,6 +27,13 @@ var (
 				OnDelete:   schema.SetNull,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "definition_synset_definitions",
+				Unique:  false,
+				Columns: []*schema.Column{DefinitionsColumns[2]},
+			},
+		},
 	}
 	// LemmasColumns holds the columns for the "lemmas" table.
 	LemmasColumns = []*schema.Column{
@@ -39,6 +46,13 @@ var (
 		Name:       "lemmas",
 		Columns:    LemmasColumns,
 		PrimaryKey: []*schema.Column{LemmasColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "lemma_written_form",
+				Unique:  false,
+				Columns: []*schema.Column{LemmasColumns[1]},
+			},
+		},
 	}
 	// SensesColumns holds the columns for the "senses" table.
 	SensesColumns = []*schema.Column{
@@ -63,6 +77,18 @@ var (
 				Columns:    []*schema.Column{SensesColumns[2]},
 				RefColumns: []*schema.Column{LemmasColumns[0]},
 				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "sense_sense_synset",
+				Unique:  false,
+				Columns: []*schema.Column{SensesColumns[1]},
+			},
+			{
+				Name:    "sense_sense_lemma",
+				Unique:  false,
+				Columns: []*schema.Column{SensesColumns[2]},
 			},
 		},
 	}
