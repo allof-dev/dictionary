@@ -34,7 +34,7 @@ func main() {
 }
 
 func prepareDB() (*ent.Client, error) {
-	c, err := ent.Open("sqlite3", fmt.Sprintf("file:%s?_fk=1", DBName), ent.Debug())
+	c, err := ent.Open("sqlite3", fmt.Sprintf("file:%s?_fk=1", DBName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open db: %w", err)
 	}
