@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/allof-dev/dictionary/ent"
 	"github.com/allof-dev/dictionary/ent/lemma"
+	"github.com/allof-dev/dictionary/pkg/utils"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -24,7 +25,7 @@ func main() {
 
 	slog.SetLogLoggerLevel(slog.LevelInfo)
 
-	c, err := prepareDB()
+	c, err := utils.NewDBClient(DBName)
 	if err != nil {
 		panic(err)
 	}
@@ -34,14 +35,6 @@ func main() {
 		panic(err)
 	}
 
-}
-
-func prepareDB() (*ent.Client, error) {
-	c, err := ent.Open("sqlite3", fmt.Sprintf("file:%s?_fk=1", DBName))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open db: %w", err)
-	}
-	return c, nil
 }
 
 func runServer(ctx context.Context, c *ent.Client) error {

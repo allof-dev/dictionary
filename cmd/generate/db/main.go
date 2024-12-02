@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/allof-dev/dictionary/ent"
+	"github.com/allof-dev/dictionary/pkg/utils"
 	"github.com/allof-dev/dictionary/pkg/wordnet"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -38,8 +39,7 @@ func main() {
 }
 
 func run(ctx context.Context, lexicon wordnet.Lexicon) error {
-	c, err := ent.Open("sqlite3",
-		fmt.Sprintf("file:%s?_fk=1", DBName))
+	c, err := utils.NewDBClient(DBName)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
