@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/allof-dev/dictionary/ent"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func NewDBClient(DBFile string) (*ent.Client, error) {

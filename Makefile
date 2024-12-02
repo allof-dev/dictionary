@@ -4,6 +4,9 @@ DB_NAME=dict.db
 run: $(DB_NAME)
 	go run ./cmd/server $(DB_NAME)
 
+batch.jsonl: $(DB_NAME)
+	go run ./cmd/generate/batch-translation $(DB_NAME) $@
+
 $(DB_NAME): $(WORDNET_FILE)
 	go run ./cmd/generate/db $(WORDNET_FILE) $@
 
