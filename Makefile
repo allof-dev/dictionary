@@ -6,6 +6,8 @@ run: $(DB_NAME)
 
 batch.jsonl: $(DB_NAME)
 	go run ./cmd/generate/batch-translation $(DB_NAME) $@
+	@echo "Check '$@'. You must resolve follow duplications manually"
+	@cat $@ | jq .custom_id | sort | uniq -d
 
 $(DB_NAME): $(WORDNET_FILE)
 	go run ./cmd/generate/db $(WORDNET_FILE) $@
